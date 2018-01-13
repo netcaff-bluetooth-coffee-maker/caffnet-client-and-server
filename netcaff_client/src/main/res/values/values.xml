@@ -1,0 +1,5 @@
+<resources>
+    <dimen name="coffee_card_border_width">1dip</dimen>
+    <dimen name="coffee_card_border_radius">0dip</dimen>
+    <dimen name="error_notif_border_radius">1dip</dimen>
+</resources>

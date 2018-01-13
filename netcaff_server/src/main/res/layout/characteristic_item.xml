@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/SmallItem"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_margin="2dip"
+    android:gravity="fill_horizontal"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/characteristic_title"
+        style="@style/CharacteristicTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="1dip"
+        android:text="@string/char_title_placeholder"
+        android:textSize="9sp" />
+
+    <TextView
+        android:id="@+id/characteristic_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/char_content_placeholder"
+        android:textSize="9sp"/>
+</LinearLayout>

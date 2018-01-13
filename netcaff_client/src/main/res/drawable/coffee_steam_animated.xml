@@ -1,0 +1,50 @@
+<animated-vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:name="vector"
+            android:width="128dp"
+            android:height="128dp"
+            android:viewportWidth="128"
+            android:viewportHeight="128">
+            <group android:name="layer1">
+                <path
+                    android:name="path4210"
+                    android:pathData="M 101.875 50.71 C 101.853 54.22 101.654 57.861 101.293 61.567 C 108.685 64.81 113.469 72.159 113.477 80.284 C 113.479 91.568 104.405 100.719 93.207 100.723 C 92.751 100.716 92.295 100.693 91.84 100.655 C 90.373 104.257 88.772 107.644 87.055 110.729 C 89.063 111.194 91.122 111.444 93.207 111.444 C 109.392 111.444 124.113 96.595 124.113 80.284 C 124.113 66.979 114.273 54.799 101.875 50.71 Z"
+                    android:fillColor="#003c8f"
+                    android:strokeWidth="0.5"/>
+                <group android:name="steam">
+                    <path
+                        android:name="path5395"
+                        android:pathData="M 41.297 78.643 C 39.51 83.346 39.5 90.073 45.689 96.364 C 48.266 98.983 49.173 100.702 49.664 103.048 C 50.202 105.617 50.184 107.542 47.066 112.069 C 43.975 116.557 38.253 121.37 38.253 121.37 C 38.253 121.37 45.095 118.073 48.791 112.977 C 50.639 110.43 52.188 107.404 52.437 104.034 C 52.687 100.664 51.493 97.021 48.31 93.786 C 42.982 88.37 43.183 83.289 43.841 79.323 C 44.465 75.565 48.338 71.45 48.338 71.45 C 48.338 71.45 43.083 73.941 41.297 78.643 Z"
+                        android:fillColor="#5e92f3"
+                        android:strokeWidth="3.67579436"/>
+                    <path
+                        android:name="path5391"
+                        android:pathData="M 58.513 58.869 C 56.726 63.572 56.716 70.299 62.905 76.59 C 65.481 79.209 66.389 80.928 66.88 83.274 C 67.417 85.843 67.4 87.768 64.282 92.295 C 61.191 96.783 55.469 101.596 55.469 101.596 C 55.469 101.596 62.311 98.299 66.007 93.203 C 67.855 90.655 69.404 87.63 69.653 84.26 C 69.903 80.89 68.709 77.247 65.526 74.012 C 60.198 68.595 60.399 63.515 61.057 59.549 C 61.681 55.791 65.554 51.676 65.554 51.676 C 65.554 51.676 60.299 54.166 58.513 58.869 Z"
+                        android:fillColor="#5e92f3"
+                        android:strokeWidth="3.67579436"/>
+                </group>
+                <path
+                    android:name="path4198"
+                    android:pathData="M 3.887 50.048 C 3.887 76.547 14.078 110.853 28.347 123.383 L 77.675 123.383 C 91.944 110.853 102.135 76.547 102.135 50.048 L 3.887 50.048 Z"
+                    android:fillColor="#1565c0"
+                    android:strokeWidth="0.5"/>
+            </group>
+        </vector>
+    </aapt:attr>
+    <target android:name="steam">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="translateY"
+                android:duration="5000"
+                android:valueFrom="0"
+                android:valueTo="-140"
+                android:repeatCount="infinite"
+                android:repeatMode="restart"
+                android:valueType="floatType"
+                android:interpolator="@android:anim/linear_interpolator"/>
+        </aapt:attr>
+    </target>
+</animated-vector>

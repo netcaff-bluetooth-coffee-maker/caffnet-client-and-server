@@ -1,0 +1,59 @@
+<animated-vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:name="vector"
+            android:width="128dp"
+            android:height="128dp"
+            android:viewportWidth="128"
+            android:viewportHeight="128">
+            <group android:name="layer1">
+                <group
+                    android:name="stirrer"
+                    android:pivotX="78.705"
+                    android:pivotY="73.045">
+                    <path
+                        android:name="rect5383"
+                        android:pathData="M 95.265 4.574 C 98.732 5.413 100.809 9.044 99.921 12.715 L 85.081 74.081 C 84.193 77.753 80.686 80.033 77.219 79.195 C 73.751 78.356 71.674 74.725 72.562 71.053 L 87.403 9.688 C 88.291 6.016 91.797 3.736 95.265 4.574 Z"
+                        android:fillColor="#003c8f"
+                        android:strokeWidth="2"/>
+                </group>
+                <path
+                    android:name="path4210"
+                    android:pathData="M 101.875 50.71 C 101.853 54.22 101.654 57.861 101.293 61.567 C 108.685 64.81 113.469 72.159 113.477 80.284 C 113.479 91.568 104.405 100.719 93.207 100.723 C 92.751 100.716 92.295 100.693 91.84 100.655 C 90.373 104.257 88.772 107.644 87.055 110.729 C 89.063 111.194 91.122 111.444 93.207 111.444 C 109.392 111.444 124.113 96.595 124.113 80.284 C 124.113 66.979 114.273 54.799 101.875 50.71 Z"
+                    android:fillColor="#003c8f"
+                    android:strokeWidth="0.5"/>
+                <path
+                    android:name="path4198"
+                    android:pathData="M 3.887 50.048 C 3.887 76.547 14.078 110.853 28.347 123.383 L 77.675 123.383 C 91.944 110.853 102.135 76.547 102.135 50.048 L 3.887 50.048 Z"
+                    android:fillColor="#1565c0"
+                    android:strokeWidth="0.5"/>
+            </group>
+        </vector>
+    </aapt:attr>
+    <target android:name="stirrer">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="translateX"
+                    android:duration="1000"
+                    android:valueFrom="0"
+                    android:valueTo="-40"
+                    android:repeatCount="infinite"
+                    android:repeatMode="reverse"
+                    android:valueType="floatType"
+                    android:interpolator="@android:anim/accelerate_decelerate_interpolator"/>
+                <objectAnimator
+                    android:propertyName="rotation"
+                    android:duration="1000"
+                    android:valueFrom="0"
+                    android:valueTo="-30"
+                    android:repeatCount="infinite"
+                    android:repeatMode="reverse"
+                    android:valueType="floatType"
+                    android:interpolator="@android:anim/linear_interpolator"/>
+            </set>
+        </aapt:attr>
+    </target>
+</animated-vector>

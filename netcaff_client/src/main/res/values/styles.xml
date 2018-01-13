@@ -1,0 +1,78 @@
+<resources>
+
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorButtonNormal">@color/colorPrimaryDark</item>
+        <item name="android:textColorPrimary">@color/colorPrimaryText</item>
+        <item name="android:colorBackground">@color/colorPrimary</item>
+    </style>
+
+    <style name="RootHeader">
+        <item name="android:textColor">@color/colorPrimaryText</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:paddingTop">15dip</item>
+        <item name="android:paddingRight">15dip</item>
+        <item name="android:paddingBottom">5dip</item>
+        <item name="android:paddingLeft">15dip</item>
+    </style>
+
+    <style name="CoffeeCard">
+        <item name="android:background">@drawable/coffee_card_border</item>
+    </style>
+
+    <style name="CoffeeCardError" parent="@style/CoffeeCard">
+        <item name="android:background">@drawable/coffee_card_error_border</item>
+    </style>
+
+    <style name="CardContent">
+        <item name="android:padding">10dip</item>
+    </style>
+
+    <style name="Footer">
+        <item name="android:background">@color/colorAccent</item>
+        <item name="android:textColor">@color/colorAccentText</item>
+        <item name="android:paddingTop">5dip</item>
+        <item name="android:paddingLeft">10dip</item>
+        <item name="android:paddingBottom">20dip</item>
+        <item name="android:paddingRight">10dip</item>
+    </style>
+
+    <style name="TitleBar" parent="@android:style/TextAppearance.Medium">
+        <item name="android:background">@color/colorPrimaryDark</item>
+        <item name="android:textColor">@color/colorPrimaryDarkText</item>
+        <item name="android:paddingTop">10dip</item>
+        <item name="android:paddingBottom">10dip</item>
+        <item name="android:paddingLeft">20dip</item>
+        <item name="android:paddingRight">20dip</item>
+    </style>
+
+    <style name="ErrorTitleBar" parent="@style/TitleBar">
+        <item name="android:background">@color/errorPrimaryDark</item>
+        <item name="android:textColor">@color/errorPrimaryDarkText</item>
+    </style>
+
+    <style name="ErrorNotif">
+        <item name="android:background">@drawable/error_notif_background</item>
+        <item name="android:paddingLeft">15dip</item>
+        <item name="android:paddingRight">15dip</item>
+        <item name="android:paddingTop">5dip</item>
+        <item name="android:paddingBottom">5dip</item>
+    </style>
+
+    <style name="ErrorButton">
+        <item name="colorButtonNormal">@color/errorPrimaryDark</item>
+    </style>
+
+    <style name="ErrorNotifField">
+        <item name="android:textColor">@color/errorPrimaryText</item>
+        <item name="android:textSize">10sp</item>
+    </style>
+
+    <style name="GridLabel">
+        <item name="android:paddingLeft">5dip</item>
+        <item name="android:paddingRight">5dip</item>
+    </style>
+
+</resources>

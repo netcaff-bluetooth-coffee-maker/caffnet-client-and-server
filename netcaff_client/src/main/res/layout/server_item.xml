@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.widget.LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    style="@style/CoffeeCard">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/machine_label"
+        style="@style/TitleBar"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        style="@style/CardContent">
+
+        <TextView
+            android:id="@+id/server_item_not_found_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/coffee_server_out_of_range" />
+
+        <LinearLayout
+            android:id="@+id/server_item_found_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:orientation="vertical">
+
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    style="@style/GridLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_column="0"
+                    android:layout_row="0"
+                    android:text="@string/coffee_server_addr_label" />
+
+                <TextView
+                    android:id="@+id/server_item_address_field"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_column="1"
+                    android:layout_row="0" />
+
+                <TextView
+                    style="@style/GridLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_column="0"
+                    android:layout_row="1"
+                    android:text="@string/coffee_server_id_label" />
+
+                <TextView
+                    android:id="@+id/server_item_id_field"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_column="1"
+                    android:layout_row="1" />
+
+            </GridLayout>
+
+            <Button
+                android:id="@+id/server_item_connect_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/connect_label" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</android.widget.LinearLayout>

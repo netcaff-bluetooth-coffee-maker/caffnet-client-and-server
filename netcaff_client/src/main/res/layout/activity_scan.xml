@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.widget.LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/found_servers_label"
+        style="@style/RootHeader"/>
+
+    <ListView
+        android:id="@+id/server_items_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_margin="10dip"
+        android:layout_weight="1"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="15dip" />
+
+    <LinearLayout
+        style="@style/Footer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <ProgressBar
+            android:id="@+id/scanning_progress"
+            style="@android:style/Widget.Holo.ProgressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/scan_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/scan_action" />
+
+    </LinearLayout>
+
+</android.widget.LinearLayout>
