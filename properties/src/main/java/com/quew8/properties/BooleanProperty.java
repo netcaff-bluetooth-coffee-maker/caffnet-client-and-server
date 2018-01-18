@@ -13,20 +13,14 @@ public class BooleanProperty extends BaseProperty<Boolean> implements ReadOnlyBo
 
     public void set(boolean b) {
         if(this.value != b) {
-            boolean oldVal = this.value;
             this.value = b;
-            notifyChange(b, oldVal);
+            notifyChange(b);
         }
     }
 
     @Override
     public boolean get() {
         return value;
-    }
-
-    @Override
-    public void setValue(Boolean value) {
-        set(value);
     }
 
     @Override

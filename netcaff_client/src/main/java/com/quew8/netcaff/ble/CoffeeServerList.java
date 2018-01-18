@@ -4,7 +4,7 @@ import android.content.Context;
 
 import com.quew8.netcaff.ClientCoffeeServer;
 import com.quew8.netcaff.SavedServers;
-import com.quew8.netcaff.lib.server.CoffeeServerID;
+import com.quew8.netcaff.lib.server.CoffeeServerId;
 
 import java.util.ArrayList;
 
@@ -17,8 +17,8 @@ public class CoffeeServerList {
 
     CoffeeServerList(Context context) {
         this.context = context;
-        CoffeeServerID[] rememberedServerIDs = SavedServers.getSavedServerIDs(context);
-        for(CoffeeServerID serverID: rememberedServerIDs) {
+        CoffeeServerId[] rememberedServerIDs = SavedServers.getSavedServerIDs(context);
+        for(CoffeeServerId serverID: rememberedServerIDs) {
             servers.add(new ClientCoffeeServer(serverID));
         }
     }
@@ -29,7 +29,7 @@ public class CoffeeServerList {
         }
     }
 
-    private int getIndexOfServer(CoffeeServerID id) {
+    private int getIndexOfServer(CoffeeServerId id) {
         for(int i = 0; i < getCountServers(); i++) {
             if(getServerByIndex(i).getAdData().getServerId().equals(id)) {
                 return i;
@@ -38,11 +38,11 @@ public class CoffeeServerList {
         return -1;
     }
 
-    public boolean isServerInList(CoffeeServerID id) {
+    public boolean isServerInList(CoffeeServerId id) {
         return getIndexOfServer(id) >= 0;
     }
 
-    public ClientCoffeeServer getServer(CoffeeServerID id) {
+    public ClientCoffeeServer getServer(CoffeeServerId id) {
         ClientCoffeeServer server = getServerOrNull(id);
         if(server == null) {
             throw new IllegalArgumentException("No such server");
@@ -50,7 +50,7 @@ public class CoffeeServerList {
         return server;
     }
 
-    public ClientCoffeeServer getServerOrNull(CoffeeServerID id) {
+    public ClientCoffeeServer getServerOrNull(CoffeeServerId id) {
         int i = getIndexOfServer(id);
         if(i >= 0) {
             return getServerByIndex(i);
@@ -67,7 +67,7 @@ public class CoffeeServerList {
         return servers.size();
     }
 
-    ClientCoffeeServer addServer(CoffeeServerID id) {
+    ClientCoffeeServer addServer(CoffeeServerId id) {
         ClientCoffeeServer server = new ClientCoffeeServer(id);
         servers.add(new ClientCoffeeServer(id));
         SavedServers.getSavedServerIDs(context, id);

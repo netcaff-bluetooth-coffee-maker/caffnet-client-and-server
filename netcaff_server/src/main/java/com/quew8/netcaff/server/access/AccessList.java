@@ -4,36 +4,37 @@ import com.quew8.netcaff.lib.access.AccessException;
 import com.quew8.netcaff.lib.access.AccessFailure;
 import com.quew8.netcaff.lib.access.ServedAccessCode;
 import com.quew8.netcaff.lib.server.UserAccessCode;
-import com.quew8.properties.IntegerProperty;
-import com.quew8.properties.ReadOnlyIntegerProperty;
+import com.quew8.properties.BaseProperty;
+import com.quew8.properties.ReadOnlyListProperty;
+import com.quew8.properties.ReadOnlyMapProperty;
+import com.quew8.properties.ValueMapProperty;
 
 import java.security.SecureRandom;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 /**
  * @author Quew8
  */
-public class AccessList {
-    private final HashMap<String, ServedAccessCode> accessCodes;
+public class AccessList extends BaseProperty<AccessList> {
+    private final ValueMapProperty<String, ServedAccessCode> accessCodes;
     private final UserList users;
-    private final IntegerProperty nAccessCodes;
     private final SecureRandom random;
 
     public AccessList(UserList users) {
-        this.accessCodes = new HashMap<>();
-        this.nAccessCodes = new IntegerProperty(0);
+        this.accessCodes = new ValueMapProperty<>();
         this.users = users;
         this.random = new SecureRandom();
+        dependsOn(accessCodes);
+        dependsOn(users);
     }
 
-    public ReadOnlyIntegerProperty getNAccessCodes() {
-        return nAccessCodes;
+    public ReadOnlyMapProperty<String, ServedAccessCode> getAccessCodes() {
+        return accessCodes;
     }
 
-    public UserList getUsers() {
-        return users;
+    public ReadOnlyListProperty<User> getUsers() {
+        return users.getUsers();
     }
 
     public ServedAccessCode getAccessCodeForUser(String username) {
@@ -52,7 +53,6 @@ public class AccessList {
             if(sac.getAccessCode().equals(accessCode)) {
                 if(sac.expired()) {
                     it.remove();
-                    nAccessCodes.set(accessCodes.size());
                     throw new AccessException(AccessFailure.TOKEN_EXPIRED, "Access token has expired");
                 }
                 return username;
@@ -66,8 +66,11 @@ public class AccessList {
         UserAccessCode uac = UserAccessCode.generate(random);
         ServedAccessCode served = ServedAccessCode.createNow(uac);
         accessCodes.put(username, served);
-        nAccessCodes.set(0);
-        nAccessCodes.set(accessCodes.size());
         return uac;
+    }
+
+    @Override
+    public AccessList getValue() {
+        return this;
     }
 }

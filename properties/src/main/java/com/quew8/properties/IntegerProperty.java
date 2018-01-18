@@ -13,20 +13,14 @@ public class IntegerProperty extends BaseProperty<Integer> implements ReadOnlyIn
 
     public void set(int b) {
         if(this.value != b) {
-            int oldVal = this.value;
             this.value = b;
-            notifyChange(b, oldVal);
+            notifyChange(b);
         }
     }
 
     @Override
     public int get() {
         return value;
-    }
-
-    @Override
-    public void setValue(Integer value) {
-        set(value);
     }
 
     @Override

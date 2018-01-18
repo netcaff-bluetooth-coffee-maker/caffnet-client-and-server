@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 /**
  * @author Quew8
  */
-
 public class CString extends CharacteristicStruct {
     private static final Charset CHARSET = StandardCharsets.UTF_8;
     private static final CharsetEncoder ENCODER = CHARSET.newEncoder()

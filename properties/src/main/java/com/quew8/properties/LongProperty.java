@@ -13,20 +13,14 @@ public class LongProperty extends BaseProperty<Long> implements ReadOnlyLongProp
 
     public void set(long b) {
         if(this.value != b) {
-            long oldVal = this.value;
             this.value = b;
-            notifyChange(b, oldVal);
+            notifyChange(b);
         }
     }
 
     @Override
     public long get() {
         return value;
-    }
-
-    @Override
-    public void setValue(Long value) {
-        set(value);
     }
 
     @Override

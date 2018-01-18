@@ -9,6 +9,7 @@ import android.hardware.usb.UsbManager;
 import android.util.Log;
 
 import com.quew8.netcaff.server.ServerCoffeeServer;
+import com.quew8.netcaff.server.UnsupportedSystemServiceException;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -29,15 +30,18 @@ public class MachineManager extends BroadcastReceiver {
             new UsbDeviceType(60416, 1060)
     };
 
-    private final Context ctx;
+    private final Context context;
     private final ServerCoffeeServer coffeeServer;
     private final UsbManager usbManager;
-    private final HashMap<String, Machine> connectedMachines;
+    private final HashMap<String, MachineHandlerThread> connectedMachines;
 
-    public MachineManager(Context ctx, ServerCoffeeServer coffeeServer) {
-        this.ctx = ctx;
+    public MachineManager(Context context, ServerCoffeeServer coffeeServer) throws UnsupportedSystemServiceException {
+        this.context = context;
         this.coffeeServer = coffeeServer;
-        this.usbManager = ctx.getSystemService(UsbManager.class);
+        this.usbManager = context.getSystemService(UsbManager.class);
+        if(usbManager == null) {
+            throw new UnsupportedSystemServiceException(UsbManager.class);
+        }
         this.connectedMachines = new HashMap<>();
 
         Map<String, UsbDevice> usbDevices = usbManager.getDeviceList();
@@ -47,7 +51,15 @@ public class MachineManager extends BroadcastReceiver {
 
         IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED);
         filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-        ctx.registerReceiver(this, filter);
+        context.registerReceiver(this, filter);
+    }
+
+    public void shutdown() {
+        for(String machineName: connectedMachines.keySet()) {
+            removeDevice(connectedMachines.get(machineName));
+        }
+        connectedMachines.clear();
+        context.unregisterReceiver(this);
     }
 
     private void onNewDevice(UsbDevice device) {
@@ -56,24 +68,22 @@ public class MachineManager extends BroadcastReceiver {
                 device.getProductId() + ", \"" + device.getProductName() + "\""
         );
         if(inList(DEVICE_WHITE_LIST, device)) {
-        //if(!inList(DEVICE_BLACK_LIST, device)) {
-        /*if((device.getVendorId() != 1060 && device.getProductId() != 60416) ||
-                (device.getVendorId() == 10755 && device.getProductId() == 67)) {*/
-
             String deviceName = device.getDeviceName();
-            Machine m = Machine.fromUSB(usbManager, device);
-            connectedMachines.put(deviceName, m);
-            coffeeServer.addMachine(m);
+            MachineHandlerThread thread = new MachineHandlerThread(deviceName);
+            thread.init(usbManager, device).done(coffeeServer::addMachine);
+            connectedMachines.put(deviceName, thread);
         }
     }
 
     private void onDeviceDisconnect(UsbDevice device) {
         String deviceName = device.getDeviceName();
         if(connectedMachines.containsKey(deviceName)) {
-            Machine m = connectedMachines.remove(deviceName);
-            coffeeServer.removeMachine(m);
-            m.disconnected();
+            removeDevice(connectedMachines.remove(deviceName));
         }
+    }
+
+    private void removeDevice(MachineHandlerThread thread) {
+        thread.disconnect().done(coffeeServer::removeMachine);
     }
 
     @Override
@@ -81,17 +91,14 @@ public class MachineManager extends BroadcastReceiver {
         String action = intent.getAction();
 
         if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
-            UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+            UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
             if(device != null) {
-                Log.d(TAG, "Device attached");
                 onNewDevice(device);
             }
         } else if(UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
-            UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+            UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
             if(device != null) {
-                Log.d(TAG, "Device detached");
                 onDeviceDisconnect(device);
-                // call your method that cleans up and closes communication with the device
             }
         }
     }
@@ -101,15 +108,15 @@ public class MachineManager extends BroadcastReceiver {
     }
 
     private static class UsbDeviceType {
-        public final int productId;
-        public final int vendorId;
+        private final int productId;
+        private final int vendorId;
 
-        public UsbDeviceType(int productId, int vendorId) {
+        private UsbDeviceType(int productId, int vendorId) {
             this.productId = productId;
             this.vendorId = vendorId;
         }
 
-        public boolean match(UsbDevice device) {
+        private boolean match(UsbDevice device) {
             return device.getProductId() == productId &&
                     device.getVendorId() == vendorId;
         }

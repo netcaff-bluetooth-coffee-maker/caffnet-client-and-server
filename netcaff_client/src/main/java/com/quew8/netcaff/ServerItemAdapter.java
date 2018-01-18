@@ -160,7 +160,7 @@ public class ServerItemAdapter extends BaseAdapter implements CoffeeScanner.Scan
 
         private void onClick(View view) {
             Intent intent = new Intent(context, ServerActivity.class);
-            intent.putExtra(AbstractServerActivity.EXTRA_SERVER_ID, server.getId());
+            intent.putExtra(ServerCommunicationActivity.EXTRA_SERVER_ID, server.getId());
             context.startActivity(intent);
         }
     }

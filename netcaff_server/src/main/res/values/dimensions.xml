@@ -1,0 +1,8 @@
+<resources>
+    <dimen name="border_width">2dip</dimen>
+    <dimen name="v_small_gap">2dip</dimen>
+    <dimen name="small_gap">4dip</dimen>
+    <dimen name="medium_gap">10dip</dimen>
+    <dimen name="notif_radius">5dip</dimen>
+    <dimen name="text_size_small">9sp</dimen>
+</resources>

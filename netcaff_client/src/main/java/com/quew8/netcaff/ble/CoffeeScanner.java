@@ -8,7 +8,7 @@ import android.util.Log;
 
 import com.quew8.netcaff.ClientCoffeeServer;
 import com.quew8.netcaff.lib.ble.util.DecodedScanData;
-import com.quew8.netcaff.lib.server.CoffeeServerID;
+import com.quew8.netcaff.lib.server.CoffeeServerId;
 import com.quew8.netcaff.lib.server.Structs;
 import com.quew8.netcaff.lib.server.StructureFormatException;
 import com.quew8.properties.BooleanProperty;
@@ -88,7 +88,7 @@ public class CoffeeScanner implements BluetoothAdapter.LeScanCallback {
             DecodedScanData decoded = DecodedScanData.decode(scanRecord);
             if(decoded.hasUUID(COFFEE_REQUEST_SERVICE)) {
                 try {
-                    CoffeeServerID serverId = new CoffeeServerID();
+                    CoffeeServerId serverId = new CoffeeServerId();
                     byte[] serviceData = decoded.getServiceData(COFFEE_REQUEST_SERVICE);
                     Structs.readIn(serverId, serviceData);
                     if(callback == null || callback.verify(serverId)) {
@@ -115,7 +115,7 @@ public class CoffeeScanner implements BluetoothAdapter.LeScanCallback {
     }
 
     public interface ScanCallback {
-        default boolean verify(CoffeeServerID id) {
+        default boolean verify(CoffeeServerId id) {
             return true;
         }
         default void onScanStarted(CoffeeScanner scanner) {}
@@ -133,7 +133,7 @@ public class CoffeeScanner implements BluetoothAdapter.LeScanCallback {
         }
 
         @Override
-        public boolean verify(CoffeeServerID id) {
+        public boolean verify(CoffeeServerId id) {
             return lookingFor.getAdData().getServerId().equals(id);
         }
 

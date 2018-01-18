@@ -8,18 +8,17 @@ import java.nio.ByteBuffer;
 /**
  * @author Quew8
  */
-
 public class Order extends AlignedStruct {
     public static final int SIZE_BYTES = 1;
     private static final int
             ID_OFF = 0, ID_LEN = 4,
             STATUS_OFF = ID_LEN, STATUS_LEN = 2;
 
-    private OrderID id;
+    private OrderId id;
     private OrderStatus status;
     private long timeReady;
 
-    private Order(OrderID id, OrderStatus status) {
+    private Order(OrderId id, OrderStatus status) {
         this.id = id;
         this.status = status;
         this.timeReady = status == OrderStatus.READ_TO_POUR
@@ -28,10 +27,10 @@ public class Order extends AlignedStruct {
     }
 
     Order() {
-        this(new OrderID(), OrderStatus.QUEUED);
+        this(new OrderId(), OrderStatus.QUEUED);
     }
 
-    OrderID queue(OrderID orderId) {
+    OrderId queue(OrderId orderId) {
         this.id = orderId;
         this.status = OrderStatus.QUEUED;
         this.timeReady = -1;
@@ -53,7 +52,7 @@ public class Order extends AlignedStruct {
 
     void pullFrom(Order below) {
         if(below == null) {
-            this.id = new OrderID();
+            this.id = new OrderId();
             this.status = OrderStatus.QUEUED;
             this.timeReady = -1;
         } else {
@@ -70,7 +69,7 @@ public class Order extends AlignedStruct {
         doCheck();
     }
 
-    public OrderID getId() {
+    public OrderId getId() {
         return id;
     }
 
@@ -124,7 +123,7 @@ public class Order extends AlignedStruct {
             throw new StructureFormatException("At least " + SIZE_BYTES + " are required");
         }
         byte b = in.get();
-        id = new OrderID(BLEUtil.readBits(b, ID_OFF, ID_LEN));
+        id = new OrderId(BLEUtil.readBits(b, ID_OFF, ID_LEN));
         status = OrderStatus.fromCode(BLEUtil.readBits(b, STATUS_OFF, STATUS_LEN));
         timeReady = status == OrderStatus.READ_TO_POUR ? 0 : -1;
     }

@@ -9,51 +9,51 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 
 import com.quew8.netcaff.server.ServerCoffeeServer;
-import com.quew8.netcaff.server.ble.Advertiser.AdvertiserStatus;
-import com.quew8.netcaff.server.ble.Server.ServerStatus;
+import com.quew8.netcaff.server.UnsupportedSystemServiceException;
+import com.quew8.netcaff.server.ble.BleAdvertiser.AdvertiserStatus;
+import com.quew8.netcaff.server.ble.BleServer.ServerStatus;
 import com.quew8.properties.BooleanProperty;
 import com.quew8.properties.ListenerSet.ListenerHandle;
 import com.quew8.properties.PropertyChangeListener;
 import com.quew8.properties.ReadOnlyBooleanProperty;
-import com.quew8.netcaff.lib.server.CoffeeServer;
 
 import static android.content.Context.BLUETOOTH_SERVICE;
 
 /**
  * @author Quew8
  */
-public class BLEManager extends BroadcastReceiver {
+public class BleManager extends BroadcastReceiver {
     private final Context ctx;
     private final BooleanProperty registered;
     private final BooleanProperty enabled;
-    private final BluetoothManager manager;
     private final BluetoothAdapter adapter;
 
-    private final CoffeeServer coffeeServer;
-    private final Server server;
-    private final Advertiser advertiser;
+    private final BleServer bleServer;
+    private final BleAdvertiser bleAdvertiser;
 
     private ListenerHandle<PropertyChangeListener<Boolean>> adapterStartupCallbackHandle = null;
     private ListenerHandle<PropertyChangeListener<ServerStatus>> serverStartupCallbackHandle = null;
     private ListenerHandle<PropertyChangeListener<AdvertiserStatus>> advertiserStartupCallbackHandle = null;
 
-    public BLEManager(Context ctx, ServerCoffeeServer coffeeServer) {
+    public BleManager(Context ctx, ServerCoffeeServer coffeeServer) throws UnsupportedSystemServiceException {
         this.ctx = ctx;
         this.registered = new BooleanProperty(false);
         this.enabled = new BooleanProperty(false);
-        this.manager = (BluetoothManager) ctx.getSystemService(BLUETOOTH_SERVICE);
+        BluetoothManager manager = (BluetoothManager) ctx.getSystemService(BLUETOOTH_SERVICE);
+        if(manager == null) {
+            throw new UnsupportedSystemServiceException(BluetoothManager.class);
+        }
         this.adapter = manager.getAdapter();
         if(adapter == null) {
-            throw new RuntimeException("Bluetooth is not supported");
+            throw new UnsupportedSystemServiceException("Bluetooth is not supported");
         }
         if(!ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
-            throw new RuntimeException("Bluetooth LE is not supported");
+            throw new UnsupportedSystemServiceException("Bluetooth LE is not supported");
         }
         enabled.set(adapter.isEnabled());
 
-        this.coffeeServer = coffeeServer;
-        this.advertiser = new Advertiser(ctx, adapter, coffeeServer);
-        this.server = new Server(ctx, manager, advertiser, coffeeServer);
+        this.bleAdvertiser = new BleAdvertiser(ctx, adapter, coffeeServer);
+        this.bleServer = new BleServer(ctx, manager, bleAdvertiser, coffeeServer);
     }
 
     public void register() {
@@ -69,38 +69,38 @@ public class BLEManager extends BroadcastReceiver {
 
     public void startup() {
         if(!registered.get()) {
-            throw new IllegalStateException("BLEManager is not registered");
+            throw new IllegalStateException("BleManager is not registered");
         }
         if(!enabled.get()) {
             adapterStartupCallbackHandle = enabled.addListener(this::adapterStartupCallback);
             turnOnBluetooth();
-        } else if(server.getStatus().get() == ServerStatus.INACTIVE) {
-            serverStartupCallbackHandle = server.getStatus().addListener(this::serverStartupCallback);
-            server.start();
-        } else if(advertiser.getStatus().get() == Advertiser.AdvertiserStatus.INACTIVE) {
-            advertiserStartupCallbackHandle = advertiser.getStatus().addListener(this::advertiserStartupCallback);
-            advertiser.start();
+        } else if(bleServer.getStatus().get() == ServerStatus.INACTIVE) {
+            serverStartupCallbackHandle = bleServer.getStatus().addListener(this::serverStartupCallback);
+            bleServer.start();
+        } else if(bleAdvertiser.getStatus().get() == BleAdvertiser.AdvertiserStatus.INACTIVE) {
+            advertiserStartupCallbackHandle = bleAdvertiser.getStatus().addListener(this::advertiserStartupCallback);
+            bleAdvertiser.start();
         }
     }
 
     public void shutdown() {
-        advertiser.stop();
-        server.stop();
+        bleAdvertiser.stop();
+        bleServer.stop();
     }
 
     public ReadOnlyBooleanProperty isBluetoothEnabled() {
         return enabled;
     }
 
-    public Server getServer() {
-        return server;
+    public BleServer getBleServer() {
+        return bleServer;
     }
 
-    public Advertiser getAdvertiser() {
-        return advertiser;
+    public BleAdvertiser getBleAdvertiser() {
+        return bleAdvertiser;
     }
 
-    private void adapterStartupCallback(Boolean newState, Boolean oldState) {
+    private void adapterStartupCallback(Boolean newState) {
         if(newState) {
             enabled.removeListener(adapterStartupCallbackHandle);
             adapterStartupCallbackHandle = null;
@@ -108,17 +108,17 @@ public class BLEManager extends BroadcastReceiver {
         }
     }
 
-    private void serverStartupCallback(ServerStatus newState, ServerStatus oldState) {
+    private void serverStartupCallback(ServerStatus newState) {
         if(newState == ServerStatus.ACTIVE) {
-            server.getStatus().removeListener(serverStartupCallbackHandle);
+            bleServer.getStatus().removeListener(serverStartupCallbackHandle);
             serverStartupCallbackHandle = null;
             startup();
         }
     }
 
-    private void advertiserStartupCallback(AdvertiserStatus newState, AdvertiserStatus oldState) {
+    private void advertiserStartupCallback(AdvertiserStatus newState) {
         if(newState == AdvertiserStatus.ACTIVE) {
-            advertiser.getStatus().removeListener(advertiserStartupCallbackHandle);
+            bleAdvertiser.getStatus().removeListener(advertiserStartupCallbackHandle);
             advertiserStartupCallbackHandle = null;
             startup();
         }
@@ -139,8 +139,8 @@ public class BLEManager extends BroadcastReceiver {
                 break;
             }
             case BluetoothAdapter.STATE_OFF: {
-                advertiser.stop();
-                server.stop();
+                bleAdvertiser.stop();
+                bleServer.stop();
                 enabled.set(false);
                 break;
             }

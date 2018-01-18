@@ -7,33 +7,32 @@ import java.nio.ByteBuffer;
 /**
  * @author Quew8
  */
-
 public class Request extends CharacteristicStruct {
     public static final int SIZE_BYTES = 1 + UserAccessCode.SIZE_BYTES;
     private static final int
             ID_OFF = 0, ID_LEN = 4,
             CODE_OFF = ID_LEN, CODE_LEN = 2;
 
-    private OrderID orderId;
+    private OrderId orderId;
     private RequestType request;
     private UserAccessCode accessCode;
 
-    private Request(OrderID orderId, RequestType request, UserAccessCode accessCode) {
+    private Request(OrderId orderId, RequestType request, UserAccessCode accessCode) {
         this.orderId = orderId;
         this.request = request;
         this.accessCode = accessCode;
     }
 
     Request() {
-        this(new OrderID(), RequestType.CANCEL, new UserAccessCode());
+        this(new OrderId(), RequestType.CANCEL, new UserAccessCode());
     }
 
-    public void set(OrderID orderId, RequestType request, UserAccessCode accessCode) {
+    public void set(OrderId orderId, RequestType request, UserAccessCode accessCode) {
         if(orderId != null) {
             this.orderId = orderId;
             orderId.doCheck();
         } else {
-            this.orderId = new OrderID();
+            this.orderId = new OrderId();
         }
         this.request = request;
         this.accessCode = accessCode;
@@ -46,15 +45,15 @@ public class Request extends CharacteristicStruct {
         set(null, RequestType.ORDER, accessCode);
     }
 
-    public void setPour(OrderID orderID, UserAccessCode accessCode) {
-        set(orderID, RequestType.POUR, accessCode);
+    public void setPour(OrderId orderId, UserAccessCode accessCode) {
+        set(orderId, RequestType.POUR, accessCode);
     }
 
-    public void setCancel(OrderID orderID, UserAccessCode accessCode) {
-        set(orderID, RequestType.CANCEL, accessCode);
+    public void setCancel(OrderId orderId, UserAccessCode accessCode) {
+        set(orderId, RequestType.CANCEL, accessCode);
     }
 
-    public OrderID getOrderId() {
+    public OrderId getOrderId() {
         return orderId;
     }
 
@@ -98,7 +97,7 @@ public class Request extends CharacteristicStruct {
             throw new StructureFormatException("At least " + SIZE_BYTES + " are required");
         }
         byte b = in.get();
-        orderId = new OrderID(BLEUtil.readBits(b, ID_OFF, ID_LEN));
+        orderId = new OrderId(BLEUtil.readBits(b, ID_OFF, ID_LEN));
         request = RequestType.fromCode(BLEUtil.readBits(b, CODE_OFF, CODE_LEN));
         accessCode.readFromBuffer(in);
     }
@@ -110,7 +109,7 @@ public class Request extends CharacteristicStruct {
 
     @Override
     public String getPrettyString() {
-        return "[" + getOrderId().getPrettyString() + " | " + Integer.toString(getRequestType().getCode()) + "] | "
+        return "[" + getOrderId().getPrettyString() + " | " + getRequestType().getPrettyString() + "] | "
                 + accessCode.toHexString();
     }
 

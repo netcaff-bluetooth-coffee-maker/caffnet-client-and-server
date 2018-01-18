@@ -1,6 +1,5 @@
 package com.quew8.netcaff.lib.ble.util;
 
-import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
@@ -17,7 +16,6 @@ import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_A
 /**
  * @author Quew8
  */
-
 public class BLEUtil {
     private BLEUtil() {}
 

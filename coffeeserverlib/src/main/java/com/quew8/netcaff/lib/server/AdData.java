@@ -1,24 +1,24 @@
 package com.quew8.netcaff.lib.server;
 
-import android.util.Log;
-
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 
 /**
  * @author Quew8
  */
 public class AdData extends CharacteristicStruct {
-    private static final String TAG = AdData.class.getSimpleName();
     public static final int N_ORDERS = 5;
     private static final int MIN_SIZE_BYTES = getSizeBytes(0);
     public static final int MAX_SIZE_BYTES = getSizeBytes(N_ORDERS);
 
-    private CoffeeServerID serverId;
+    private CoffeeServerId serverId;
     private final Order[] orders;
     private int nActiveOrders;
+    private boolean editing = false;
 
-    AdData(CoffeeServerID serverId, Order... orders) {
+    AdData(CoffeeServerId serverId, Order... orders) {
         this.serverId = serverId;
         this.orders = new Order[N_ORDERS];
         this.nActiveOrders = 0;
@@ -34,7 +34,7 @@ public class AdData extends CharacteristicStruct {
         }
     }
 
-    public CoffeeServerID getServerId() {
+    public CoffeeServerId getServerId() {
         return serverId;
     }
 
@@ -49,55 +49,62 @@ public class AdData extends CharacteristicStruct {
         set();
     }
 
-    public OrderID placeOrder() {
-        OrderID newId = doPlaceOrder();
+    public AdDataEdit edit() {
+        if(editing) {
+            throw new IllegalStateException("Already editing this AdData");
+        }
+        return new AdDataEdit();
+    }
+
+    public OrderId placeOrder() {
+        OrderId newId = doPlaceOrder();
         set();
         return newId;
     }
 
-    public void orderPlaced(OrderID orderId) {
+    public void orderPlaced(OrderId orderId) {
         doOrderPlaced(orderId);
         set();
     }
 
-    public void orderRemoved(OrderID orderId) {
+    public void orderRemoved(OrderId orderId) {
         doCancel(Collections.singletonList(orderId));
         set();
     }
 
-    public void setMaking(Iterable<OrderID> orderIDs) {
+    public void setMaking(Iterable<OrderId> orderIDs) {
         doSetMaking(orderIDs);
         set();
     }
 
-    public void setMade(Iterable<OrderID> orderIDs) {
+    public void setMade(Iterable<OrderId> orderIDs) {
         doSetMade(orderIDs);
         set();
     }
 
-    public void pour(OrderID orderID) {
-        doPour(orderID);
+    public void pour(OrderId orderId) {
+        doPour(orderId);
         set();
     }
 
-    public void cancel(OrderID orderID) {
-        cancel(Collections.singletonList(orderID));
+    public void cancel(OrderId orderId) {
+        cancel(Collections.singletonList(orderId));
     }
 
-    public void cancel(Iterable<OrderID> orderIDs) {
+    public void cancel(Iterable<OrderId> orderIDs) {
         doCancel(orderIDs);
         set();
     }
 
-    public void reset(Iterable<OrderID> orderIDs) {
+    public void reset(Iterable<OrderId> orderIDs) {
         doReset(orderIDs);
         set();
     }
 
-    private void ensureNoDuplicates(Iterable<OrderID> orderIDs) {
-        for(OrderID orderId1: orderIDs) {
+    private void ensureNoDuplicates(Iterable<OrderId> orderIDs) {
+        for(OrderId orderId1: orderIDs) {
             boolean matched = false;
-            for(OrderID orderId2: orderIDs) {
+            for(OrderId orderId2: orderIDs) {
                 if(orderId1.equals(orderId2)) {
                     if(matched) {
                         throw new IllegalArgumentException("Duplicate order ids");
@@ -109,23 +116,23 @@ public class AdData extends CharacteristicStruct {
         }
     }
 
-    private OrderID doPlaceOrder() {
+    private OrderId doPlaceOrder() {
         if(nActiveOrders >= N_ORDERS) {
             throw new RuntimeException("Queue not large enough");
         }
         return orders[nActiveOrders++].queue(genId());
     }
 
-    private void doOrderPlaced(OrderID orderID) {
+    private void doOrderPlaced(OrderId orderId) {
         if(nActiveOrders >= N_ORDERS) {
             throw new RuntimeException("Queue not large enough");
         }
-        orders[nActiveOrders++].queue(orderID);
+        orders[nActiveOrders++].queue(orderId);
     }
 
-    private void doSetMaking(Iterable<OrderID> orderIDs) {
+    private void doSetMaking(Iterable<OrderId> orderIDs) {
         ensureNoDuplicates(orderIDs);
-        for(OrderID orderId: orderIDs) {
+        for(OrderId orderId: orderIDs) {
             int index = getOrderIndexForId(orderId);
             Order o = getOrder(index);
             if(o.getStatus() != OrderStatus.QUEUED) {
@@ -135,9 +142,9 @@ public class AdData extends CharacteristicStruct {
         }
     }
 
-    private void doSetMade(Iterable<OrderID> orderIDs) {
+    private void doSetMade(Iterable<OrderId> orderIDs) {
         ensureNoDuplicates(orderIDs);
-        for(OrderID orderId: orderIDs) {
+        for(OrderId orderId: orderIDs) {
             int index = getOrderIndexForId(orderId);
             Order o = getOrder(index);
             if(o.getStatus() != OrderStatus.BEING_MADE && o.getStatus() != OrderStatus.QUEUED) {
@@ -147,7 +154,7 @@ public class AdData extends CharacteristicStruct {
         }
     }
 
-    private void doPour(OrderID orderId) {
+    private void doPour(OrderId orderId) {
         int index = getOrderIndexForId(orderId);
         Order o = getOrder(index);
         if(o.getStatus() != OrderStatus.READ_TO_POUR) {
@@ -156,16 +163,16 @@ public class AdData extends CharacteristicStruct {
         removeOrderIndex(index);
     }
 
-    private void doCancel(Iterable<OrderID> orderIDs) {
+    private void doCancel(Iterable<OrderId> orderIDs) {
         ensureNoDuplicates(orderIDs);
-        for(OrderID orderId: orderIDs) {
+        for(OrderId orderId: orderIDs) {
             removeOrderIndex(getOrderIndexForId(orderId));
         }
     }
 
-    private void doReset(Iterable<OrderID> orderIDs) {
+    private void doReset(Iterable<OrderId> orderIDs) {
         ensureNoDuplicates(orderIDs);
-        for(OrderID orderId: orderIDs) {
+        for(OrderId orderId: orderIDs) {
             int index = getOrderIndexForId(orderId);
             Order o = getOrder(index);
             if(o.getStatus() == OrderStatus.QUEUED) {
@@ -184,7 +191,7 @@ public class AdData extends CharacteristicStruct {
         nActiveOrders--;
     }
 
-    public int getOrderIndexForIdNoThrow(OrderID id) {
+    public int getOrderIndexForIdNoThrow(OrderId id) {
         for(int i = 0; i < getNActiveOrders(); i++) {
             if(getOrder(i).getId().equals(id)) {
                 return i;
@@ -193,7 +200,7 @@ public class AdData extends CharacteristicStruct {
         return -1;
     }
 
-    private int getOrderIndexForId(OrderID id) {
+    private int getOrderIndexForId(OrderId id) {
         int index = getOrderIndexForIdNoThrow(id);
         if(index < 0) {
             throw new IllegalArgumentException("No such order");
@@ -205,7 +212,7 @@ public class AdData extends CharacteristicStruct {
         return nActiveOrders;
     }
 
-    private OrderID genId() {
+    private OrderId genId() {
         outer:
         for(int i = 1; i <= N_ORDERS; i++) {
             for(int j = 0; j < nActiveOrders; j++) {
@@ -213,17 +220,9 @@ public class AdData extends CharacteristicStruct {
                     continue outer;
                 }
             }
-            return new OrderID(i);
+            return new OrderId(i);
         }
         throw new RuntimeException("No valid id found");
-    }
-
-    public void log() {
-        Log.d(TAG, "AD DATA DUMP----------------------------");
-        for(int i = 0; i < nActiveOrders; i++) {
-            Log.d(TAG, "Order[" + i + "] = " + orders[i]);
-        }
-        Log.d(TAG, "----------------------------------------");
     }
 
     @Override
@@ -257,7 +256,7 @@ public class AdData extends CharacteristicStruct {
     }
 
     private static int getSizeBytes(int nActiveOrders) {
-        return CoffeeServerID.SIZE_BYTES + (nActiveOrders * Order.SIZE_BYTES);
+        return CoffeeServerId.SIZE_BYTES + (nActiveOrders * Order.SIZE_BYTES);
     }
 
     @Override
@@ -267,5 +266,64 @@ public class AdData extends CharacteristicStruct {
             s.append(" | ").append(getOrder(i).getPrettyString());
         }
         return s.toString();
+    }
+
+    public class AdDataEdit {
+        private final ArrayList<OrderId> making;
+        private final ArrayList<OrderId> made;
+        private final ArrayList<OrderId> cancelled;
+        private boolean edited = false;
+
+        private AdDataEdit() {
+            AdData.this.editing = true;
+            this.making = new ArrayList<>();
+            this.made = new ArrayList<>();
+            this.cancelled = new ArrayList<>();
+        }
+
+        public void making(OrderId making) {
+            checkEditing();
+            this.making.add(making);
+        }
+
+        public void making(Collection<OrderId> making) {
+            checkEditing();
+            this.making.addAll(making);
+        }
+
+        public void made(OrderId made) {
+            checkEditing();
+            this.made.add(made);
+        }
+
+        public void made(Collection<OrderId> made) {
+            checkEditing();
+            this.made.addAll(made);
+        }
+
+        public void cancelled(OrderId cancelled) {
+            checkEditing();
+            this.cancelled.add(cancelled);
+        }
+
+        public void cancelled(Collection<OrderId> cancelled) {
+            checkEditing();
+            this.cancelled.addAll(cancelled);
+        }
+
+        private void checkEditing() {
+            if(this.edited) {
+                throw new IllegalStateException("Edit already applied");
+            }
+        }
+
+        public void apply() {
+            this.edited = true;
+            AdData.this.editing = false;
+            doSetMaking(making);
+            doSetMade(made);
+            doCancel(cancelled);
+            set();
+        }
     }
 }

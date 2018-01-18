@@ -17,6 +17,10 @@ public enum ReplyType {
         return code;
     }
 
+    public String getPrettyString() {
+        return String.format("%x (%s)", getCode(), name());
+    }
+
     public static ReplyType fromCode(int code) {
         for(ReplyType rt: ReplyType.values()) {
             if(rt.code == code) {

@@ -2,15 +2,13 @@ package com.quew8.netcaff.server;
 
 import android.app.Activity;
 import android.support.annotation.NonNull;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.TextView;
 
-import com.quew8.netcaff.lib.server.OrderID;
-import com.quew8.netcaff.server.machine.Machine;
+import com.quew8.netcaff.lib.server.OrderId;
 import com.quew8.netcaff.server.machine.TxCommand;
+import com.quew8.properties.ListenerSet;
+import com.quew8.properties.PropertyChangeListener;
 
 import java.util.List;
 import java.util.Locale;
@@ -21,92 +19,74 @@ import java.util.Observer;
 /**
  * @author Quew8
  */
+class MachineAdapter extends CoffeeServerBaseAdapter<ServerCoffeeServer.AssignedMachine> {
+    private ListenerSet.ListenerHandle<PropertyChangeListener<List<ServerCoffeeServer.AssignedMachine>>> machinesHandle;
 
-public class MachineAdapter extends BaseAdapter {
-    private static final String TAG = MachineAdapter.class.getSimpleName();
-
-    private final ServerCoffeeServer coffeeServer;
-    private final Activity activity;
-
-    MachineAdapter(@NonNull Activity activity, ServerCoffeeServer coffeeServer) {
-        this.activity = activity;
-        this.coffeeServer = coffeeServer;
-        this.coffeeServer.getNMachines().addListener(this::mod);
-        this.coffeeServer.getMachineChange().addListener((o,n) -> mod(0,0));
-    }
-
-    private void mod(int o, int n) {
-        this.activity.runOnUiThread(this::notifyDataSetChanged);
+    MachineAdapter(@NonNull Activity activity) {
+        super(activity, R.layout.machine_item, R.layout.no_machines_item);
     }
 
     @Override
-    public int getCount() {
-        return coffeeServer.getNMachines().get();
+    int getCount(ServerCoffeeServer server) {
+        return server.getMachines().size();
     }
 
     @Override
-    public Machine getItem(int position) {
-        return coffeeServer.getMachine(position);
+    ServerCoffeeServer.AssignedMachine getItem(ServerCoffeeServer server, int position) {
+        return server.getMachines().get(position);
     }
 
     @Override
-    public long getItemId(int position) {
-        return coffeeServer.getMachine(position).getDeviceName().hashCode();
+    void listenTo(ServerCoffeeServer server) {
+        machinesHandle = server.getMachines().addListener(this::mod);
+        /*machineChangeHandle = server.getMachineChange().addListener(this::mod);*/
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup container) {
-        MachineWatcher mw;
-        if(convertView == null) {
-            convertView = LayoutInflater.from(activity).inflate(R.layout.machine_item, container, false);
-            mw = new MachineWatcher(
-                    convertView.findViewById(R.id.machine_name_field),
-                    convertView.findViewById(R.id.machine_cups_field),
-                    convertView.findViewById(R.id.machine_water_field),
-                    convertView.findViewById(R.id.machine_coffee_field),
-                    convertView.findViewById(R.id.machine_state_field),
-                    convertView.findViewById(R.id.machine_orders_field),
-                    convertView.findViewById(R.id.machine_last_made_field),
-                    convertView.findViewById(R.id.machine_getting_switch),
-                    convertView.findViewById(R.id.machine_making_switch),
-                    convertView.findViewById(R.id.machine_pouring_switch),
-                    convertView.findViewById(R.id.machine_dumping_switch)
-            );
-            convertView.setTag(mw);
-        } else {
-            mw = (MachineWatcher) convertView.getTag();
-        }
-        Machine m = coffeeServer.getMachine(position);
-        List<OrderID> orders = coffeeServer.getMachineOrders(position);
-        mw.nameField.setText(m.getDeviceName());
-        mw.cupsField.setText(String.format(Locale.getDefault(), "%d", m.getNCups().get()));
-        mw.waterField.setText(String.format(Locale.getDefault(), "%d", m.getWaterLevel().get()));
-        mw.coffeeField.setText(String.format(Locale.getDefault(), "%d", m.getCoffeeLevel().get()));
-        mw.stateField.setText(m.getState().get().toString());
-        mw.ordersField.setText(ordersListToString(orders));
-        mw.sinceTime.setSince(m.getTimeLastMade().get());
-        setVisible(mw.gettingSwitch, m.isTalkingAbout(TxCommand.GET));
-        setVisible(mw.makingSwitch, m.isTalkingAbout(TxCommand.MAKE_1) ||
-                m.isTalkingAbout(TxCommand.MAKE_2) ||
-                m.isTalkingAbout(TxCommand.MAKE_3));
-        setVisible(mw.pouringSwitch, m.isTalkingAbout(TxCommand.POUR));
-        setVisible(mw.dumpingSwitch, m.isTalkingAbout(TxCommand.DUMP));
-        return convertView;
+    void unlistenTo(ServerCoffeeServer server) {
+        server.getMachines().removeListener(machinesHandle);
+        /*server.getMachineChange().removeListener(machineChangeHandle);*/
+    }
+
+    @Override
+    MachineWatcher getWatcher(View v) {
+        return new MachineWatcher(
+                v.findViewById(R.id.machine_name_field),
+                v.findViewById(R.id.machine_cups_field),
+                v.findViewById(R.id.machine_water_field),
+                v.findViewById(R.id.machine_coffee_field),
+                v.findViewById(R.id.machine_state_field),
+                v.findViewById(R.id.machine_orders_field),
+                v.findViewById(R.id.machine_last_made_field),
+                v.findViewById(R.id.machine_getting_switch),
+                v.findViewById(R.id.machine_making_switch),
+                v.findViewById(R.id.machine_pouring_switch),
+                v.findViewById(R.id.machine_dumping_switch)
+        );
+    }
+
+    @Override
+    MachineWatcher castToWatcher(Object o) {
+        return (MachineWatcher) o;
+    }
+
+    private void mod(Object o) {
+        mod();
     }
 
     private static void setVisible(View v, boolean b) {
         v.setVisibility(b ? View.VISIBLE : View.INVISIBLE);
     }
 
-    private static String ordersListToString(List<OrderID> orders) {
+    private static String ordersListToString(List<OrderId> orders) {
         if(orders.isEmpty()) {
             return "None";
         } else {
-            return String.join(", ", orders.stream().map(OrderID::toString).toArray(String[]::new));
+            return String.join(", ", orders.stream().map(OrderId::toString).toArray(String[]::new));
         }
     }
 
-    private class MachineWatcher implements Observer {
+    private class MachineWatcher implements IWatcher<ServerCoffeeServer.AssignedMachine>, Observer {
         private final SinceTime sinceTime;
         private final TextView nameField;
         private final TextView cupsField;
@@ -140,8 +120,26 @@ public class MachineAdapter extends BaseAdapter {
         }
 
         @Override
+        public void update(ServerCoffeeServer server, ServerCoffeeServer.AssignedMachine data) {
+            List<OrderId> orders = data.getOrders().getValue();
+            nameField.setText(data.getDeviceName());
+            cupsField.setText(String.format(Locale.getDefault(), "%d", data.getNCups()));
+            waterField.setText(String.format(Locale.getDefault(), "%d", data.getWaterLevel()));
+            coffeeField.setText(String.format(Locale.getDefault(), "%d", data.getCoffeeLevel()));
+            stateField.setText(data.getState().toString());
+            ordersField.setText(ordersListToString(orders));
+            sinceTime.setSince(data.getTimeLastMade());
+            setVisible(gettingSwitch, data.isTalkingAbout(TxCommand.GET));
+            setVisible(makingSwitch, data.isTalkingAbout(TxCommand.MAKE_1) ||
+                    data.isTalkingAbout(TxCommand.MAKE_2) ||
+                    data.isTalkingAbout(TxCommand.MAKE_3));
+            setVisible(pouringSwitch, data.isTalkingAbout(TxCommand.POUR));
+            setVisible(dumpingSwitch, data.isTalkingAbout(TxCommand.DUMP));
+        }
+
+        @Override
         public void update(Observable o, Object arg) {
-            activity.runOnUiThread(() -> lastMadeField.setText((String) arg));
+            runOnUiThread(() -> lastMadeField.setText((String) arg));
         }
     }
 }

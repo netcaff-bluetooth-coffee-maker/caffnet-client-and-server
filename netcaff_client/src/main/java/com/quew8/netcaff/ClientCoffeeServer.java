@@ -7,9 +7,9 @@ import com.quew8.netcaff.lib.TimeUtil;
 import com.quew8.netcaff.lib.access.ServedAccessCode;
 import com.quew8.netcaff.lib.machine.MachineConstants;
 import com.quew8.netcaff.lib.server.CoffeeServer;
-import com.quew8.netcaff.lib.server.CoffeeServerID;
+import com.quew8.netcaff.lib.server.CoffeeServerId;
 import com.quew8.netcaff.lib.server.Order;
-import com.quew8.netcaff.lib.server.OrderID;
+import com.quew8.netcaff.lib.server.OrderId;
 import com.quew8.netcaff.lib.server.OrderStatus;
 import com.quew8.netcaff.lib.server.ReplyType;
 import com.quew8.netcaff.lib.server.UserAccessCode;
@@ -26,10 +26,10 @@ public class ClientCoffeeServer extends CoffeeServer {
     private static final String TAG = ClientCoffeeServer.class.getSimpleName();
 
     private BluetoothDevice device;
-    private HashMap<OrderID, Long> orderReadyEstimates;
+    private HashMap<OrderId, Long> orderReadyEstimates;
     private ArrayList<ServedAccessCode> servedCodes;
 
-    public ClientCoffeeServer(CoffeeServerID serverId) {
+    public ClientCoffeeServer(CoffeeServerId serverId) {
         super(serverId);
         this.orderReadyEstimates = new HashMap<>();
         this.servedCodes = new ArrayList<>();
@@ -63,7 +63,7 @@ public class ClientCoffeeServer extends CoffeeServer {
         this.device = device;
     }
 
-    long getTimeUntilOrderReady(OrderID id) {
+    long getTimeUntilOrderReady(OrderId id) {
         if(!orderReadyEstimates.containsKey(id)) {
             throw new IllegalArgumentException("No such order \"" + id + "\"");
         }
@@ -84,7 +84,7 @@ public class ClientCoffeeServer extends CoffeeServer {
                 orderReadyEstimates.put(o.getId(), time);
             }
         }
-        Iterator<Map.Entry<OrderID, Long>> it = orderReadyEstimates.entrySet().iterator();
+        Iterator<Map.Entry<OrderId, Long>> it = orderReadyEstimates.entrySet().iterator();
         while(it.hasNext()) {
             int index = getAdData().getOrderIndexForIdNoThrow(it.next().getKey());
             if(index < 0) {
@@ -97,14 +97,14 @@ public class ClientCoffeeServer extends CoffeeServer {
         if(getReply().getReply() == ReplyType.OK) {
             switch(getRequest().getRequestType()) {
                 case ORDER: {
-                    OrderID orderId = getReply().getOrderId();
+                    OrderId orderId = getReply().getOrderId();
                     getAdData().orderPlaced(orderId);
                     orderReadyEstimates.put(orderId, getReply().getDuration().getAbsoluteTime());
                     break;
                 }
                 case POUR:
                 case CANCEL: {
-                    OrderID orderId = getReply().getOrderId();
+                    OrderId orderId = getReply().getOrderId();
                     getAdData().orderRemoved(orderId);
                     orderReadyEstimates.remove(orderId);
                     break;

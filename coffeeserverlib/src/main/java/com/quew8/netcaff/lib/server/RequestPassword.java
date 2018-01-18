@@ -6,7 +6,6 @@ import java.util.Arrays;
 /**
  * @author Quew8
  */
-
 public class RequestPassword extends CharacteristicStruct {
     public static final int SIZE_BYTES = 32;
 

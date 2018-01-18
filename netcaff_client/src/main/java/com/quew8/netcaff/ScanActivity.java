@@ -12,7 +12,7 @@ import com.quew8.properties.PropertyChangeListener;
 /**
  * @author Quew8
  */
-public class ScanActivity extends AbstractActivity {
+public class ScanActivity extends ServiceDependantActivity {
     private Button scanBtn;
     private ProgressBar scanningProgress;
     private ListenerSet.ListenerHandle<PropertyChangeListener<Boolean>> scanStateListener;
@@ -53,7 +53,7 @@ public class ScanActivity extends AbstractActivity {
         getScanner().scan(serverItemsAdapter);
     }
 
-    public void onScanningStateChange(Boolean state, Boolean oldState) {
+    public void onScanningStateChange(Boolean state) {
         if(state) {
             scanningProgress.setVisibility(View.VISIBLE);
             scanBtn.setText(R.string.scanning_text);

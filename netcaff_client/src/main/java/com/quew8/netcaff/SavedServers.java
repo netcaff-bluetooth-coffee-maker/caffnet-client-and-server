@@ -3,7 +3,7 @@ package com.quew8.netcaff;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import com.quew8.netcaff.lib.server.CoffeeServerID;
+import com.quew8.netcaff.lib.server.CoffeeServerId;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -18,7 +18,7 @@ public class SavedServers {
 
     private SavedServers() {}
 
-    public static CoffeeServerID[] getSavedServerIDs(Context context, CoffeeServerID... addIns) {
+    public static CoffeeServerId[] getSavedServerIDs(Context context, CoffeeServerId... addIns) {
         SharedPreferences prefs = context.getSharedPreferences(SavedServers.class.getCanonicalName(), Context.MODE_PRIVATE);
         Set<String> idStrings = prefs.getStringSet(SAVED_SERVERS, null);
         if(idStrings == null) {
@@ -26,9 +26,9 @@ public class SavedServers {
         }
         HashSet<String> goodIDs = new HashSet<>();
         boolean goneBad = false;
-        ArrayList<CoffeeServerID> serverIds = new ArrayList<>();
+        ArrayList<CoffeeServerId> serverIds = new ArrayList<>();
         for(String idString: idStrings) {
-            CoffeeServerID id = CoffeeServerID.fromPrefString(idString);
+            CoffeeServerId id = CoffeeServerId.fromPrefString(idString);
             if(id != null) {
                 boolean duplicate = false;
                 for(int i = 0; i < serverIds.size(); i++) {
@@ -48,16 +48,16 @@ public class SavedServers {
         }
         if(goneBad || addIns.length > 0) {
             outer:
-            for(CoffeeServerID addIn: addIns) {
+            for(CoffeeServerId addIn: addIns) {
                 for(int i = 0; i < serverIds.size(); i++) {
                     if(serverIds.get(i).equals(addIn)) {
                         continue outer;
                     }
                 }
-                goodIDs.add(CoffeeServerID.toPrefString(addIn));
+                goodIDs.add(CoffeeServerId.toPrefString(addIn));
             }
             prefs.edit().putStringSet(SAVED_SERVERS, goodIDs).commit();
         }
-        return serverIds.toArray(new CoffeeServerID[serverIds.size()]);
+        return serverIds.toArray(new CoffeeServerId[serverIds.size()]);
     }
 }

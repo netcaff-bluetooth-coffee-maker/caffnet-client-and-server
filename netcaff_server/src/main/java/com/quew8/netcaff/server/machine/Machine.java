@@ -2,9 +2,11 @@ package com.quew8.netcaff.server.machine;
 
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
+import android.os.Handler;
 import android.util.Log;
 
 import com.quew8.netcaff.lib.TimeUtil;
+import com.quew8.properties.BaseProperty;
 import com.quew8.properties.IntegerProperty;
 import com.quew8.properties.LongProperty;
 import com.quew8.properties.Property;
@@ -13,40 +15,56 @@ import com.quew8.properties.ReadOnlyLongProperty;
 import com.quew8.properties.ReadOnlyProperty;
 import static com.quew8.netcaff.lib.machine.MachineConstants.*;
 
-import java.util.Calendar;
-
 /**
  * @author Quew8
  */
-public class Machine {
+public class Machine extends BaseProperty<Machine> {
     private static final String TAG = Machine.class.getSimpleName();
 
-    private Property<MachineState> state;
-    private IntegerProperty nCups, waterLevel, coffeeLevel;
-    private LongProperty timeLastMade;
+    public static final int MSG_GET = 1, MSG_MAKE = 2, MSG_POUR = 3, MSG_DUMP = 4;
+    public static final int MSG_NATURE_FAILED = 1, MSG_NATURE_PERFORMING = 2, MSG_NATURE_FINISHED = 4;
+    public static final int FAILURE_NONE = 1, FAILURE_COMMS = 2, FAILURE_REPLY = 3;
+
+    private final MachineHandlerThread thread;
+    private final Property<MachineState> state;
+    private final IntegerProperty nCups, waterLevel, coffeeLevel;
+    private final LongProperty timeStartedMaking;
+    private final LongProperty timeLastMade;
+    private final LongProperty timeStartedPouring;
     private final String usbDeviceName;
     private final CommsChannel comms;
-    private ReadCallback readCallback;
-    private MakeCallback makeCallback;
-    private PourCallback pourCallback;
-    private DumpCallback dumpCallback;
+    private Handler readHandler;
+    private Handler makeHandler;
+    private Handler pourHandler;
+    private Handler dumpHandler;
 
-    private Machine(UsbDevice usbDevice, SerialChannel serialChannel) {
+    private Machine(MachineHandlerThread thread, UsbDevice usbDevice, SerialChannel serialChannel) {
+        this.thread = thread;
         this.state = new Property<>(MachineState.IDLE);
         this.nCups = new IntegerProperty(0);
         this.waterLevel = new IntegerProperty(0);
         this.coffeeLevel = new IntegerProperty(0);
+        this.timeStartedMaking = new LongProperty(-1);
         this.timeLastMade = new LongProperty(-1);
+        this.timeStartedPouring = new LongProperty(-1);
         this.usbDeviceName = usbDevice.getDeviceName();
         this.comms = new CommsChannel(serialChannel);
+        dependsOn(state);
+        dependsOn(nCups);
+        dependsOn(waterLevel);
+        dependsOn(coffeeLevel);
+        dependsOn(timeStartedMaking);
+        dependsOn(timeLastMade);
+        dependsOn(timeStartedPouring);
+        dependsOn(comms);
     }
 
-    public void read(ReadCallback readCallback) {
-        this.readCallback = readCallback;
-        comms.startConversation(TxCommand.GET, iGetCallback);
+    public void read(Handler readHandler) {
+        this.readHandler = readHandler;
+        this.thread.runOnThread(() -> comms.startConversation(TxCommand.GET, iGetCallback));
     }
 
-    public void make(MakeCallback makeCallback, int n) {
+    public void make(Handler makeHandler, int n) {
         if(state.get() != MachineState.IDLE) {
             throw new IllegalStateException("Cannot make a coffee whilst not idle");
         }
@@ -62,24 +80,24 @@ public class Machine {
         }
         this.waterLevel.set(this.waterLevel.get() - n);
         this.coffeeLevel.set(this.coffeeLevel.get() - n);
-        this.makeCallback = makeCallback;
-        this.comms.startConversation(txCommand, iMakeCallback);
+        this.makeHandler = makeHandler;
+        this.thread.runOnThread(() -> this.comms.startConversation(txCommand, iMakeCallback));
     }
 
-    public void pour(PourCallback pourCallback) {
+    public void pour(Handler pourHandler) {
         if(state.get() != MachineState.MADE) {
             throw new IllegalStateException("Cannot pour a coffee whilst not made");
         }
-        this.pourCallback = pourCallback;
-        this.comms.startConversation(TxCommand.POUR, iPouringCallback);
+        this.pourHandler = pourHandler;
+        this.thread.runOnThread(() -> this.comms.startConversation(TxCommand.POUR, iPouringCallback));
     }
 
-    public void dump(DumpCallback dumpCallback) {
+    public void dump(Handler dumpHandler) {
         if(state.get() != MachineState.MADE) {
             throw new IllegalStateException("Cannot dump a coffee whilst not made");
         }
-        this.dumpCallback = dumpCallback;
-        this.comms.startConversation(TxCommand.DUMP, iDumpingCallback);
+        this.dumpHandler = dumpHandler;
+        this.thread.runOnThread(() -> this.comms.startConversation(TxCommand.DUMP, iDumpingCallback));
     }
 
     public ReadOnlyProperty<MachineState> getState() {
@@ -98,8 +116,16 @@ public class Machine {
         return coffeeLevel;
     }
 
+    public ReadOnlyLongProperty getTimeStartedMaking() {
+        return timeStartedMaking;
+    }
+
     public ReadOnlyLongProperty getTimeLastMade() {
         return timeLastMade;
+    }
+
+    public ReadOnlyLongProperty getTimeStartedPouring() {
+        return timeStartedPouring;
     }
 
     public boolean isCoffeeOld() {
@@ -146,7 +172,12 @@ public class Machine {
                 water = -1;
                 coffee = -1;
                 handle.finished();
-                readCallback.done(true, nCups.get(), waterLevel.get(), coffeeLevel.get());
+                readHandler.sendMessage(readHandler.obtainMessage(
+                        MSG_GET,
+                        MSG_NATURE_FINISHED,
+                        FAILURE_NONE,
+                        null
+                ));
             }
         }
 
@@ -155,7 +186,12 @@ public class Machine {
             available = -1;
             water = -1;
             coffee = -1;
-            readCallback.done(false, -1, -1, -1);
+            readHandler.sendMessage(readHandler.obtainMessage(
+                    MSG_GET,
+                    MSG_NATURE_FAILED,
+                    FAILURE_COMMS,
+                    handle.getFailureReason()
+            ));
         }
     };
 
@@ -167,16 +203,22 @@ public class Machine {
             switch(reply) {
                 case PERFORMING: {
                     handle.acknowledged();
+                    timeStartedMaking.set(TimeUtil.currentTimeMillis());
                     state.set(MachineState.MAKING);
-                    makeCallback.making(true, reply);
+                    makeHandler.sendMessage(makeHandler.obtainMessage(
+                            MSG_MAKE, MSG_NATURE_PERFORMING, FAILURE_NONE, reply
+                    ));
                     break;
                 }
                 case COMPLETE: {
                     nCups.set(handle.getCommand().getNCups());
-                    timeLastMade.set(Calendar.getInstance().getTimeInMillis());
+                    timeStartedMaking.set(-1);
+                    timeLastMade.set(TimeUtil.currentTimeMillis());
                     state.set(MachineState.MADE);
                     handle.finished();
-                    makeCallback.made(reply);
+                    makeHandler.sendMessage(makeHandler.obtainMessage(
+                            MSG_MAKE, MSG_NATURE_FINISHED, FAILURE_NONE, reply
+                    ));
                     break;
                 }
                 case ERR_TOO_MUCH_COFFEE:
@@ -184,7 +226,9 @@ public class Machine {
                 case ERR_GROUNDS_LOW:
                 case ERR_WATER_AND_GROUNDS_LOW: {
                     handle.finished();
-                    makeCallback.making(false, reply);
+                    makeHandler.sendMessage(makeHandler.obtainMessage(
+                            MSG_MAKE, MSG_NATURE_FAILED, FAILURE_REPLY, reply
+                    ));
                 }
                 default: {}
             }
@@ -192,7 +236,9 @@ public class Machine {
 
         @Override
         public void onFailure(CommsChannel.ConversationHandle handle) {
-            makeCallback.making(false, null);
+            makeHandler.sendMessage(makeHandler.obtainMessage(
+                    MSG_MAKE, MSG_NATURE_FAILED, FAILURE_COMMS, handle.getFailureReason()
+            ));
         }
     };
 
@@ -204,11 +250,15 @@ public class Machine {
             switch(reply) {
                 case PERFORMING: {
                     handle.acknowledged();
+                    timeStartedPouring.set(TimeUtil.currentTimeMillis());
                     state.set(MachineState.POURING);
-                    pourCallback.pouring(true, reply);
+                    pourHandler.sendMessage(pourHandler.obtainMessage(
+                            MSG_POUR, MSG_NATURE_PERFORMING, FAILURE_NONE, reply
+                    ));
                     break;
                 }
                 case COMPLETE: {
+                    timeStartedPouring.set(-1);
                     nCups.set(nCups.get() - handle.getCommand().getNCups());
                     if(nCups.get() > 0) {
                         state.set(MachineState.MADE);
@@ -217,13 +267,17 @@ public class Machine {
                         timeLastMade.set(-1);
                     }
                     handle.finished();
-                    pourCallback.poured(reply);
+                    pourHandler.sendMessage(pourHandler.obtainMessage(
+                            MSG_POUR, MSG_NATURE_FINISHED, FAILURE_NONE, reply
+                    ));
                     break;
                 }
                 case ERR_NO_COFFEE:
                 case ERR_NO_MUG: {
                     handle.finished();
-                    pourCallback.pouring(false, reply);
+                    pourHandler.sendMessage(pourHandler.obtainMessage(
+                            MSG_POUR, MSG_NATURE_FAILED, FAILURE_REPLY, reply
+                    ));
                 }
                 default: {}
             }
@@ -231,7 +285,9 @@ public class Machine {
 
         @Override
         public void onFailure(CommsChannel.ConversationHandle handle) {
-            pourCallback.pouring(false, null);
+            pourHandler.sendMessage(pourHandler.obtainMessage(
+                    MSG_POUR, MSG_NATURE_FAILED, FAILURE_COMMS, handle.getFailureReason()
+            ));
         }
     };
 
@@ -243,11 +299,15 @@ public class Machine {
             switch(reply) {
                 case PERFORMING: {
                     handle.acknowledged();
+                    timeStartedPouring.set(TimeUtil.currentTimeMillis());
                     state.set(MachineState.POURING);
-                    dumpCallback.dumping(true, reply);
+                    dumpHandler.sendMessage(dumpHandler.obtainMessage(
+                            MSG_DUMP, MSG_NATURE_PERFORMING, FAILURE_NONE, reply
+                    ));
                     break;
                 }
                 case COMPLETE: {
+                    timeStartedPouring.set(-1);
                     nCups.set(nCups.get() - handle.getCommand().getNCups());
                     if(nCups.get() > 0) {
                         state.set(MachineState.MADE);
@@ -256,13 +316,17 @@ public class Machine {
                         timeLastMade.set(-1);
                     }
                     handle.finished();
-                    dumpCallback.dumped(reply);
+                    dumpHandler.sendMessage(dumpHandler.obtainMessage(
+                            MSG_DUMP, MSG_NATURE_FINISHED, FAILURE_NONE, reply
+                    ));
                     break;
                 }
                 case ERR_NO_COFFEE:
                 case ERR_NO_MUG: {
                     handle.finished();
-                    dumpCallback.dumping(false, reply);
+                    dumpHandler.sendMessage(dumpHandler.obtainMessage(
+                            MSG_DUMP, MSG_NATURE_FAILED, FAILURE_REPLY, reply
+                    ));
                 }
                 default: {}
             }
@@ -270,9 +334,16 @@ public class Machine {
 
         @Override
         public void onFailure(CommsChannel.ConversationHandle handle) {
-            dumpCallback.dumping(false, null);
+            dumpHandler.sendMessage(dumpHandler.obtainMessage(
+                    MSG_DUMP, MSG_NATURE_FAILED, FAILURE_COMMS, handle.getFailureReason()
+            ));
         }
     };
+
+    @Override
+    public Machine getValue() {
+        return this;
+    }
 
     public String getDeviceName() {
         return usbDeviceName;
@@ -288,30 +359,26 @@ public class Machine {
                 '}';
     }
 
-    static Machine fromUSB(UsbManager usbManager, UsbDevice device) {
-        return new Machine(device, SerialChannel.fromUSB(usbManager, device));
+    @Override
+    public boolean equals(Object o) {
+        if(this == o) return true;
+        if(o == null || getClass() != o.getClass()) return false;
+
+        Machine machine = (Machine) o;
+
+        return usbDeviceName.equals(machine.usbDeviceName);
+    }
+
+    @Override
+    public int hashCode() {
+        return usbDeviceName.hashCode();
+    }
+
+    static Machine fromUSB(MachineHandlerThread thread, UsbManager usbManager, UsbDevice device) {
+        return new Machine(thread, device, SerialChannel.fromUSB(usbManager, device));
     }
 
     public enum MachineState {
         IDLE, MAKING, MADE, POURING
-    }
-
-    public interface ReadCallback {
-        void done(boolean success, int available, int water, int coffee);
-    }
-
-    public interface MakeCallback {
-        void making(boolean success, RxReply reply);
-        void made(RxReply reply);
-    }
-
-    public interface PourCallback {
-        void pouring(boolean success, RxReply reply);
-        void poured(RxReply reply);
-    }
-
-    public interface DumpCallback {
-        void dumping(boolean success, RxReply reply);
-        void dumped(RxReply reply);
     }
 }

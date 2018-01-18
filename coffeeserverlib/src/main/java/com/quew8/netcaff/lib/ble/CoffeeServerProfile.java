@@ -11,10 +11,8 @@ import java.util.UUID;
 /**
  * @author Quew8
  */
-
 public class CoffeeServerProfile {
-    //public static final long TOKEN_LIFETIME_MS = TimeUtil.asMillis(5, 0);
-    public static final long TOKEN_LIFETIME_MS = TimeUtil.asMillis(0, 15);
+    public static final long TOKEN_LIFETIME_MS = TimeUtil.asMillis(30, 0);
 
     private static final String COFFEE_SERVER_PROFILE_UUID_BASE = "1e99XXXX-ba71-4502-846d-060b16187553";
     public static final UUID
@@ -24,7 +22,7 @@ public class CoffeeServerProfile {
             COFFEE_REQUEST_SERVICE_CONFIG = getUUIDFromBase(5),
             COFFEE_REQUEST_SERVICE_ERROR = getUUIDFromBase(6),
             COFFEE_REQUEST_SERVICE_LEVELS = getUUIDFromBase(7),
-            COFFEE_LOGIN_SERVICE = getUUIDFromBase(8),
+            /*COFFEE_LOGIN_SERVICE = getUUIDFromBase(8),*/
             COFFEE_LOGIN_SERVICE_USERNAME = getUUIDFromBase(9),
             COFFEE_LOGIN_SERVICE_PASSWORD = getUUIDFromBase(10),
             COFFEE_LOGIN_SERVICE_ACCESS_CODE = getUUIDFromBase(11),
@@ -38,7 +36,7 @@ public class CoffeeServerProfile {
                     BLEUtil.getSizeOfBLEServiceDataPacket(AdData.MAX_SIZE_BYTES);
 
     private static BluetoothGattService coffeeRequestService = null;
-    private static BluetoothGattService coffeeLoginService = null;
+    /*private static BluetoothGattService coffeeLoginService = null;*/
 
     public static BluetoothGattService[] getAllCoffeeServices() {
         return new BluetoothGattService[] {
@@ -67,9 +65,9 @@ public class CoffeeServerProfile {
         return coffeeRequestService;
     }
 
-    public static BluetoothGattService getCoffeeLoginService() {
+    /*public static BluetoothGattService getCoffeeLoginService() {
         return getCoffeeRequestService();
-        /*if(coffeeLoginService == null) {
+        if(coffeeLoginService == null) {
             coffeeLoginService = new ServiceBuilder(COFFEE_LOGIN_SERVICE)
                     .newCharacteristic(COFFEE_LOGIN_SERVICE_USERNAME).writeable().add()
                     .newCharacteristic(COFFEE_LOGIN_SERVICE_PASSWORD).writeable().add()
@@ -78,8 +76,8 @@ public class CoffeeServerProfile {
                     .newCharacteristic(COFFEE_LOGIN_SERVICE_ERROR).readable().add()
                     .build();
         }
-        return coffeeLoginService;*/
-    }
+        return coffeeLoginService;
+    }*/
 
     private static UUID getUUIDFromBase(int handle16) {
         return UUID.fromString(COFFEE_SERVER_PROFILE_UUID_BASE.replace("XXXX", intToPaddedString(handle16)));

@@ -13,7 +13,7 @@ import android.widget.TextView;
 
 import com.quew8.netcaff.lib.server.CoffeeServer;
 import com.quew8.netcaff.lib.server.Order;
-import com.quew8.netcaff.lib.server.OrderID;
+import com.quew8.netcaff.lib.server.OrderId;
 import com.quew8.netcaff.lib.server.OrderStatus;
 import com.quew8.properties.ReadOnlyBooleanProperty;
 import com.quew8.properties.deferred.Promise;
@@ -53,7 +53,7 @@ public class ServerActivityItemAdapter extends BaseAdapter {
         this.errorString = errorString;
     }
 
-    private void onIsWorkingChange(boolean isWorking, boolean wasWorking) {
+    private void onIsWorkingChange(boolean isWorking) {
         notifyDataSetChanged();
     }
 
@@ -229,7 +229,7 @@ public class ServerActivityItemAdapter extends BaseAdapter {
         private final ImageView statusImage;
         private final TextView statusField, idField, durationField;
         private final Button cancelBtn, pourBtn;
-        private OrderID orderId;
+        private OrderId orderId;
         private final UntilTime untilTime;
 
         OrderWatcher(ImageView statusImage, TextView statusField, TextView idField, TextView durationField,
@@ -265,8 +265,8 @@ public class ServerActivityItemAdapter extends BaseAdapter {
 
     interface AdapterItemsCallback {
         Promise<Void> refreshLevels();
-        Promise<Void> pour(OrderID orderId);
-        Promise<Void> cancel(OrderID orderId);
+        Promise<Void> pour(OrderId orderId);
+        Promise<Void> cancel(OrderId orderId);
         ReadOnlyBooleanProperty isWorking();
     }
 }

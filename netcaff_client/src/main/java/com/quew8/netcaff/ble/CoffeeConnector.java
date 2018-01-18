@@ -46,7 +46,7 @@ public class CoffeeConnector extends BluetoothGattCallback {
         this.scanner = scanner;
         this.externalStatus = new Property<>(ConnectorStatus.INACTIVE);
         this.status = new Property<>(InternalStatus.DESTROYED);
-        this.status.addListener((n,o) -> {
+        this.status.addListener((n) -> {
             Log.d(TAG, "New connector status: " + n.toString());
             if(n == InternalStatus.ERROR) {
                 externalStatus.set(ConnectorStatus.ERROR);

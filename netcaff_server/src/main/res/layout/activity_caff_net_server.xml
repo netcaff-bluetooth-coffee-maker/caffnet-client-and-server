@@ -8,66 +8,26 @@
     android:orientation="vertical"
     android:baselineAligned="false">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <include layout="@layout/characteristic_item" android:id="@+id/request_char"
-            android:layout_weight="1"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"/>
-        <include layout="@layout/characteristic_item" android:id="@+id/reply_char"
-            android:layout_weight="1"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"/>
-        <include layout="@layout/characteristic_item" android:id="@+id/error_char"
-            android:layout_weight="1"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"/>
-        <include layout="@layout/characteristic_item" android:id="@+id/levels_char"
-            android:layout_weight="1"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"/>
-
-    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
-        <include layout="@layout/characteristic_item" android:id="@+id/username_char"
-            android:layout_weight="1"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"/>
-        <include layout="@layout/characteristic_item" android:id="@+id/password_char"
-            android:layout_weight="1"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"/>
-        <include layout="@layout/characteristic_item" android:id="@+id/access_code_char"
-            android:layout_weight="1"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"/>
-        <include layout="@layout/characteristic_item" android:id="@+id/login_error_char"
-            android:layout_weight="1"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"/>
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ble_state_title"
+            android:textAppearance="@style/TextAppearance.AppCompat.Display1" />
 
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
+            android:gravity="bottom"
             android:orientation="vertical"
-            android:baselineAligned="false"
-            style="@style/Root">
+            android:paddingLeft="@dimen/medium_gap"
+            android:paddingRight="@dimen/medium_gap">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -76,18 +36,15 @@
 
                 <TextView
                     android:id="@+id/status_text_view"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/inactive_status"
-                    android:textAppearance="@style/TextAppearance.AppCompat.Display1" />
+                    android:text="@string/inactive_status" />
 
                 <ProgressBar
                     android:id="@+id/loading_bar"
                     style="?android:attr/progressBarStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="4" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent" />
 
             </LinearLayout>
 
@@ -108,41 +65,92 @@
                     android:layout_height="wrap_content" />
             </LinearLayout>
 
-            <Button
-                android:id="@+id/start_server_btn"
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" android:baselineAligned="false">
+
+        <include layout="@layout/characteristic_item" android:id="@+id/request_char"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/v_small_gap"/>
+        <include layout="@layout/characteristic_item" android:id="@+id/reply_char"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/v_small_gap"/>
+        <include layout="@layout/characteristic_item" android:id="@+id/error_char"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/v_small_gap"/>
+        <include layout="@layout/characteristic_item" android:id="@+id/levels_char"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/v_small_gap"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" android:baselineAligned="false">
+
+        <include layout="@layout/characteristic_item" android:id="@+id/username_char"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/v_small_gap"/>
+        <include layout="@layout/characteristic_item" android:id="@+id/password_char"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/v_small_gap"/>
+        <include layout="@layout/characteristic_item" android:id="@+id/access_code_char"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/v_small_gap"/>
+        <include layout="@layout/characteristic_item" android:id="@+id/login_error_char"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/v_small_gap"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" android:baselineAligned="false">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:baselineAligned="false"
+            style="@style/Root">
+
+            <TextView
+                android:id="@+id/textView2"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:onClick="onServerStartBtnClick"
-                android:text="@string/start_server_action"
-                android:visibility="gone"/>
+                android:text="@string/orders_list_label"
+                android:textAppearance="@style/TextAppearance.AppCompat.Display1" />
 
-            <Button
-                android:id="@+id/start_adverts_btn"
+            <ListView
+                android:id="@+id/orders_list"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:onClick="onAdvertsStartBtnClick"
-                android:text="@string/start_adverts_action"
-                android:visibility="gone"/>
-
-            <LinearLayout
-                style="@style/ProfileSection"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/textView2"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/orders_list_label"
-                    android:textAppearance="@style/TextAppearance.AppCompat.Display1" />
-
-                <ListView
-                    android:id="@+id/orders_list"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-
-            </LinearLayout>
+                android:layout_height="match_parent"
+                android:divider="@android:color/transparent"
+                android:dividerHeight="@dimen/medium_gap" />
 
         </LinearLayout>
 
@@ -165,7 +173,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:divider="@android:color/transparent"
-                android:dividerHeight="10dp" />
+                android:dividerHeight="@dimen/medium_gap" />
         </LinearLayout>
 
         <LinearLayout
@@ -187,7 +195,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:divider="@android:color/transparent"
-                android:dividerHeight="10dp" />
+                android:dividerHeight="@dimen/medium_gap" />
         </LinearLayout>
 
     </LinearLayout>

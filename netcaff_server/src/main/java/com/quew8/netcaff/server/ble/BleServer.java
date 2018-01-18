@@ -30,8 +30,8 @@ import java.util.UUID;
 /**
  * @author Quew8
  */
-public class Server extends BluetoothGattServerCallback {
-    private static final String TAG = Server.class.getSimpleName();
+public class BleServer extends BluetoothGattServerCallback {
+    private static final String TAG = BleServer.class.getSimpleName();
 
     private static final int AD_STOP_DELAY_MS = 500;
 
@@ -42,12 +42,12 @@ public class Server extends BluetoothGattServerCallback {
     private final BooleanProperty requestServiceNotify;
     private final BooleanProperty loginServiceNotify;
     private final BluetoothManager manager;
-    private final Advertiser advertiser;
+    private final BleAdvertiser bleAdvertiser;
     private final ServerCoffeeServer coffeeServer;
 
     private BluetoothGattServer gattServer;
 
-    Server(Context ctx, BluetoothManager manager, Advertiser advertiser, ServerCoffeeServer coffeeServer) {
+    BleServer(Context ctx, BluetoothManager manager, BleAdvertiser bleAdvertiser, ServerCoffeeServer coffeeServer) {
         this.ctx = ctx;
         this.handler = new Handler();
         this.status = new Property<>(ServerStatus.INACTIVE);
@@ -55,7 +55,7 @@ public class Server extends BluetoothGattServerCallback {
         this.requestServiceNotify = new BooleanProperty(false);
         this.loginServiceNotify = new BooleanProperty(false);
         this.manager = manager;
-        this.advertiser = advertiser;
+        this.bleAdvertiser = bleAdvertiser;
         this.coffeeServer = coffeeServer;
         coffeeServer.getReply().addModifiedCallback(this::notifyOfReplyChanged);
         coffeeServer.getResponseUserAccessCode().addModifiedCallback(this::notifyOfResponseAccessCodeChanged);
@@ -133,14 +133,14 @@ public class Server extends BluetoothGattServerCallback {
         if(newState == BluetoothProfile.STATE_CONNECTED) {
             Log.i(TAG, "BluetoothDevice CONNECTED: " + device);
             connectedDevice.set(device);
-            handler.postDelayed(advertiser::stop, AD_STOP_DELAY_MS);
+            handler.postDelayed(bleAdvertiser::stop, AD_STOP_DELAY_MS);
             requestServiceNotify.set(false);
             loginServiceNotify.set(false);
             coffeeServer.resetResponses();
         } else if(newState == BluetoothProfile.STATE_DISCONNECTED) {
             Log.i(TAG, "BluetoothDevice DISCONNECTED: " + device);
             connectedDevice.set(null);
-            handler.postDelayed(advertiser::start, AD_STOP_DELAY_MS);
+            handler.postDelayed(bleAdvertiser::start, AD_STOP_DELAY_MS);
         }
     }
 
@@ -152,7 +152,7 @@ public class Server extends BluetoothGattServerCallback {
                 offset + ", " + characteristic.getUuid() + ")");
 
         if(CoffeeServerProfile.COFFEE_REQUEST_SERVICE_LEVELS.equals(characteristic.getUuid())) {
-            coffeeServer.updateMachineLevels(() -> {
+            coffeeServer.updateMachineLevels().done(() -> {
                 CharacteristicStruct s = coffeeServer.getLevels();
                 int responseStatus = BluetoothGatt.GATT_FAILURE;
                 int responseOffset = 0;

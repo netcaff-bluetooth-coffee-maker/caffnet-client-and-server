@@ -17,6 +17,10 @@ public enum RequestType {
         return code;
     }
 
+    public String getPrettyString() {
+        return String.format("%x (%s)", getCode(), name());
+    }
+
     public static RequestType fromCode(int code) {
         for(RequestType rt: RequestType.values()) {
             if(rt.code == code) {

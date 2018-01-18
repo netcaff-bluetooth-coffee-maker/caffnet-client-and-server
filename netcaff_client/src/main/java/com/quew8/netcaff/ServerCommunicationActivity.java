@@ -3,7 +3,7 @@ package com.quew8.netcaff;
 import android.os.Bundle;
 
 import com.quew8.netcaff.ble.CoffeeConnector;
-import com.quew8.netcaff.lib.server.CoffeeServerID;
+import com.quew8.netcaff.lib.server.CoffeeServerId;
 import com.quew8.properties.BooleanProperty;
 import com.quew8.properties.ListenerSet;
 import com.quew8.properties.PropertyChangeListener;
@@ -12,12 +12,12 @@ import com.quew8.properties.ReadOnlyBooleanProperty;
 /**
  * @author Quew8
  */
-public abstract class AbstractServerActivity extends AbstractActivity {
+public abstract class ServerCommunicationActivity extends ServiceDependantActivity {
     public static final String EXTRA_SERVER_ID = "extra_server_id";
 
     private ServerInterface serverInterface;
     private BooleanProperty working;
-    private CoffeeServerID coffeeServerId;
+    private CoffeeServerId coffeeServerId;
     private ClientCoffeeServer coffeeServer;
     private ListenerSet.ListenerHandle<PropertyChangeListener<CoffeeConnector.ConnectorStatus>> connectorStatusListenerHandle;
     private ListenerSet.ListenerHandle<PropertyChangeListener<Boolean>> isScanningListenerHandle;
@@ -64,7 +64,7 @@ public abstract class AbstractServerActivity extends AbstractActivity {
         getScanner().isScanning().removeListener(isScanningListenerHandle);
     }
 
-    private void onBLEStatusChange(Object state, Object o) {
+    private void onBLEStatusChange(Object state) {
         runOnUiThread(() -> working.set(
                 getConnector().getStatus().get() != CoffeeConnector.ConnectorStatus.INACTIVE ||
                         getScanner().isScanning().get()

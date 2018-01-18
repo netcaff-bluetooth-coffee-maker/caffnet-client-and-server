@@ -9,7 +9,7 @@ import java.util.UUID;
  * @author Quew8
  */
 public class CoffeeServer {
-    public static final long READY_COFFEE_TIMEOUT_MS = TimeUtil.asMillis(2, 0);
+    public static final long READY_COFFEE_TIMEOUT_MS = TimeUtil.asMillis(4, 0);
 
     private final AdData adData;
 
@@ -23,7 +23,7 @@ public class CoffeeServer {
     private final ResponseUserAccessCode responseUserAccessCode;
     private final CString loginError;
 
-    public CoffeeServer(CoffeeServerID id) {
+    public CoffeeServer(CoffeeServerId id) {
         this.adData = new AdData(id);
         this.request = new Request();
         this.reply = new Reply();
@@ -36,10 +36,10 @@ public class CoffeeServer {
     }
 
     public CoffeeServer(int id) {
-        this(new CoffeeServerID(id));
+        this(new CoffeeServerId(id));
     }
 
-    public CoffeeServerID getId() {
+    public CoffeeServerId getId() {
         return adData.getServerId();
     }
 

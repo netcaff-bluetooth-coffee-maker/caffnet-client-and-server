@@ -52,7 +52,7 @@ public class Deferred<T> implements Promise<T> {
         return this;
     }
 
-    private void checkRunning() {
+    protected void checkRunning() {
         if(isFailed()) {
             throw new IllegalStateException("Deferred has already failed");
         }

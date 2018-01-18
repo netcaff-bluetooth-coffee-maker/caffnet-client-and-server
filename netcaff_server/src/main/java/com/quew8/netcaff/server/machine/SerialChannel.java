@@ -121,9 +121,9 @@ class SerialChannel {
             bb.put(rxBuffer);
             rxBuffer = bb;
         }
-        for(byte aByte : bytes) {
-            rxBuffer.put(aByte);
-            if(aByte == '\n') {
+        for(byte b : bytes) {
+            rxBuffer.put(b);
+            if(b == '\n') {
                 readMessage();
             }
         }

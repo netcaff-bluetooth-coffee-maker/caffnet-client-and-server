@@ -2,15 +2,16 @@ package com.quew8.netcaff.server;
 
 import android.app.Activity;
 import android.support.annotation.NonNull;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.TextView;
 
 import com.quew8.netcaff.lib.access.ServedAccessCode;
 import com.quew8.netcaff.server.access.User;
+import com.quew8.properties.ListenerSet;
+import com.quew8.properties.PropertyChangeListener;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Observable;
 import java.util.Observer;
 
@@ -18,31 +19,52 @@ import java.util.Observer;
 /**
  * @author Quew8
  */
-public class UserAdapter extends BaseAdapter {
-    private static final String TAG = UserAdapter.class.getSimpleName();
+public class UserAdapter extends CoffeeServerBaseAdapter<User> {
+    private ListenerSet.ListenerHandle<PropertyChangeListener<Map<String, ServedAccessCode>>> accessCodesListener;
+    private ListenerSet.ListenerHandle<PropertyChangeListener<List<User>>> usersListener;
 
-    private final ServerCoffeeServer coffeeServer;
-    private final Activity activity;
-
-    UserAdapter(@NonNull Activity activity, ServerCoffeeServer coffeeServer) {
-        this.activity = activity;
-        this.coffeeServer = coffeeServer;
-        this.coffeeServer.getAccessList().getNAccessCodes().addListener(this::mod);
-        this.coffeeServer.getAccessList().getUsers().getNUsers().addListener(this::mod);
-    }
-
-    private void mod(int o, int n) {
-        this.activity.runOnUiThread(this::notifyDataSetChanged);
+    UserAdapter(@NonNull Activity activity) {
+        super(activity, R.layout.user_item, R.layout.no_users_item);
     }
 
     @Override
-    public int getCount() {
-        return coffeeServer.getAccessList().getUsers().getNUsers().get();
+    int getCount(ServerCoffeeServer server) {
+        return server.getAccessList().getUsers().size();
     }
 
     @Override
-    public User getItem(int position) {
-        return coffeeServer.getAccessList().getUsers().getUser(position);
+    User getItem(ServerCoffeeServer server, int position) {
+        return server.getAccessList().getUsers().get(position);
+    }
+
+    @Override
+    void listenTo(ServerCoffeeServer server) {
+        accessCodesListener = server.getAccessList().getAccessCodes().addListener(this::mod);
+        usersListener = server.getAccessList().getUsers().addListener(this::mod);
+    }
+
+    @Override
+    void unlistenTo(ServerCoffeeServer server) {
+        server.getAccessList().getAccessCodes().removeListener(accessCodesListener);
+        server.getAccessList().getUsers().removeListener(usersListener);
+    }
+
+    @Override
+    UserWatcher getWatcher(View v) {
+        return new UserWatcher(
+                v.findViewById(R.id.user_username_field),
+                v.findViewById(R.id.user_token_field),
+                v.findViewById(R.id.user_token_expiry_field)
+        );
+    }
+
+    @Override
+    UserWatcher castToWatcher(Object o) {
+        return (UserWatcher) o;
+    }
+
+    private void mod(Object o) {
+        this.mod();
     }
 
     @Override
@@ -50,34 +72,7 @@ public class UserAdapter extends BaseAdapter {
         return position;
     }
 
-    @Override
-    public View getView(int position, View convertView, ViewGroup container) {
-        UserWatcher uw;
-        if(convertView == null) {
-            convertView = LayoutInflater.from(activity).inflate(R.layout.user_item, container, false);
-            uw = new UserWatcher(
-                    convertView.findViewById(R.id.user_username_field),
-                    convertView.findViewById(R.id.user_token_field),
-                    convertView.findViewById(R.id.user_token_expiry_field)
-            );
-            convertView.setTag(uw);
-        } else {
-            uw = (UserWatcher) convertView.getTag();
-        }
-        User u = getItem(position);
-        ServedAccessCode uac = coffeeServer.getAccessList().getAccessCodeForUser(u.getUsername());
-        uw.usernameField.setText(u.getUsername());
-        if(uac == null) {
-            uw.codeField.setText("None");
-            uw.untilTime.setUntil(-1);
-        } else {
-            uw.codeField.setText(uac.getAccessCode().toHexString());
-            uw.untilTime.setUntil(uac.getExpires());
-        }
-        return convertView;
-    }
-
-    private class UserWatcher implements Observer {
+    private class UserWatcher implements IWatcher<User>, Observer {
         private final UntilTime untilTime;
         private final TextView usernameField;
         private final TextView codeField;
@@ -92,8 +87,21 @@ public class UserAdapter extends BaseAdapter {
         }
 
         @Override
+        public void update(ServerCoffeeServer server, User data) {
+            ServedAccessCode uac = server.getAccessList().getAccessCodeForUser(data.getUsername());
+            usernameField.setText(data.getUsername());
+            if(uac == null) {
+                codeField.setText(R.string.no_token);
+                untilTime.setUntil(-1);
+            } else {
+                codeField.setText(uac.getAccessCode().toHexString());
+                untilTime.setUntil(uac.getExpires());
+            }
+        }
+
+        @Override
         public void update(Observable o, Object arg) {
-            activity.runOnUiThread(() -> codeExpiryField.setText((String) arg));
+            runOnUiThread(() -> codeExpiryField.setText((String) arg));
         }
     }
 }

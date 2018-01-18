@@ -15,7 +15,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 
-import com.quew8.netcaff.AbstractActivity;
+import com.quew8.netcaff.ServiceDependantActivity;
 import com.quew8.netcaff.RequestPermissionActivity;
 import com.quew8.properties.BooleanProperty;
 import com.quew8.properties.ReadOnlyBooleanProperty;
@@ -27,7 +27,7 @@ import com.quew8.properties.deferred.Promise;
  */
 public class CoffeeManager extends Service {
     private final IBinder binder = new ManagerBinder();
-    private AbstractActivity activity = null;
+    private ServiceDependantActivity activity = null;
     private final BooleanProperty registered;
     private final BooleanProperty enabled;
 
@@ -126,9 +126,6 @@ public class CoffeeManager extends Service {
                 d = activity.runActivity(new Intent(this, RequestPermissionActivity.class));
             } else {
                 d = activity.requestPermission(Manifest.permission.ACCESS_COARSE_LOCATION);
-                /*ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                        REQUEST_PERMISSIONS_COARSE_LOCATION);*/
             }
             d.done((granted) -> {
                 enableBluetooth.resolve(null);
@@ -174,7 +171,7 @@ public class CoffeeManager extends Service {
     };
 
     public class ManagerBinder extends Binder {
-        public CoffeeManager getService(AbstractActivity activity) {
+        public CoffeeManager getService(ServiceDependantActivity activity) {
             CoffeeManager.this.activity = activity;
             return CoffeeManager.this;
         }

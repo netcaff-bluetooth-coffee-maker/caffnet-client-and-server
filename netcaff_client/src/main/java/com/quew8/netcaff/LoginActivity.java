@@ -23,7 +23,7 @@ import static com.quew8.netcaff.lib.ble.CoffeeServerProfile.*;
 /**
  * @author Quew8
  */
-public class LoginActivity extends AbstractServerActivity {
+public class LoginActivity extends ServerCommunicationActivity {
     public static final String EXTRA_ACCESS_CODE = "extra_user_access_code";
 
     private TransferAccess transferAccess;
@@ -72,7 +72,7 @@ public class LoginActivity extends AbstractServerActivity {
         lastError.set(null);
     }
 
-    private void onIsWorkingChange(boolean working, boolean old) {
+    private void onIsWorkingChange(boolean working) {
         loginProgress.setVisibility(working ? View.VISIBLE : View.GONE);
         loginBtn.setEnabled(!working);
     }
@@ -83,7 +83,7 @@ public class LoginActivity extends AbstractServerActivity {
         }
     }
 
-    private void onErrorChange(String lastError, String s) {
+    private void onErrorChange(String lastError) {
         if(lastError == null) {
             loginError.setVisibility(View.GONE);
         } else {

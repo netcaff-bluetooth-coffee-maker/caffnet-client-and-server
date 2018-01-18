@@ -14,7 +14,7 @@ public abstract class BaseProperty<T> implements Listenable<T> {
         ListenerHandle<PropertyChangeListener<T>> lh = listeners.addListener(listener);
         if(notify) {
             T val = getValue();
-            listener.onChange(val, val);
+            listener.onChange(val);
         }
         return lh;
     }
@@ -24,9 +24,11 @@ public abstract class BaseProperty<T> implements Listenable<T> {
         listeners.removeListener(handle);
     }
 
-    void notifyChange(T newVal, T oldVal) {
-        listeners.notify((listener) -> listener.onChange(newVal, oldVal));
+    protected void notifyChange(T newVal) {
+        listeners.notify((listener) -> listener.onChange(newVal));
     }
 
-    public abstract void setValue(T value);
+    protected <S> ListenerHandle<PropertyChangeListener<S>> dependsOn(Listenable<S> listenable) {
+        return listenable.addListener((a) -> notifyChange(getValue()));
+    }
 }

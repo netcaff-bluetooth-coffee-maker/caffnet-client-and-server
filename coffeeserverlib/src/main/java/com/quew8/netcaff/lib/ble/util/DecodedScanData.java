@@ -72,6 +72,7 @@ public class DecodedScanData {
             len--;
             switch(type) {
                 case AdvType.FLAGS: {
+                    Log.d(TAG, "Flags: " + advertisedData[offset]);
                     decoded.flags = advertisedData[offset];
                     offset++;
                     len--;

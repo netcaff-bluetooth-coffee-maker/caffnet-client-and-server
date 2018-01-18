@@ -14,22 +14,22 @@ public class Reply extends CharacteristicStruct {
             ID_OFF = 0, ID_LEN = 4,
             CODE_OFF = ID_LEN, CODE_LEN = 2;
 
-    private OrderID orderId;
+    private OrderId orderId;
     private ReplyType reply;
     private Duration duration;
     private boolean longForm = false;
 
-    private Reply(OrderID orderId, ReplyType reply, Duration duration) {
+    private Reply(OrderId orderId, ReplyType reply, Duration duration) {
         this.orderId = orderId;
         this.reply = reply;
         this.duration = duration;
     }
 
     Reply() {
-        this(new OrderID(), ReplyType.ERROR, new Duration());
+        this(new OrderId(), ReplyType.ERROR, new Duration());
     }
 
-    public void set(OrderID orderId, ReplyType reply, Duration duration) {
+    public void set(OrderId orderId, ReplyType reply, Duration duration) {
         if(orderId != null) {
             this.orderId = orderId;
             orderId.doCheck();
@@ -46,7 +46,7 @@ public class Reply extends CharacteristicStruct {
         set();
     }
 
-    public void set(OrderID orderId, ReplyType reply) {
+    public void set(OrderId orderId, ReplyType reply) {
         this.set(orderId, reply, null);
     }
 
@@ -61,7 +61,7 @@ public class Reply extends CharacteristicStruct {
         return null;
     }
 
-    public OrderID getOrderId() {
+    public OrderId getOrderId() {
         return orderId;
     }
 
@@ -97,7 +97,7 @@ public class Reply extends CharacteristicStruct {
             throw new StructureFormatException("At least " + SHORT_SIZE_BYTES + " are required");
         }
         byte b = in.get();
-        orderId = new OrderID(BLEUtil.readBits(b, ID_OFF, ID_LEN));
+        orderId = new OrderId(BLEUtil.readBits(b, ID_OFF, ID_LEN));
         reply = ReplyType.fromCode(BLEUtil.readBits(b, CODE_OFF, CODE_LEN));
         if(in.remaining() < Duration.SIZE_BYTES) {
             longForm = false;
@@ -118,7 +118,7 @@ public class Reply extends CharacteristicStruct {
 
     @Override
     public String getPrettyString() {
-        String s = "[" + getOrderId().getPrettyString() + " | " + Integer.toString(getReply().getCode()) + "]";
+        String s = "[" + getOrderId().getPrettyString() + " | " + getReply().getPrettyString() + "]";
         if(isLongForm()) {
             s += " | " + getDuration().getPrettyString();
         }

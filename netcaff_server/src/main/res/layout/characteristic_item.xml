@@ -1,27 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     style="@style/SmallItem"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="2dip"
-    android:gravity="fill_horizontal"
     android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/characteristic_title"
-        style="@style/CharacteristicTitle"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="1dip"
-        android:text="@string/char_title_placeholder"
-        android:textSize="9sp" />
+        android:layout_marginBottom="1dip">
+
+        <TextView
+            android:id="@+id/characteristic_title"
+            style="@style/CharacteristicTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="0"
+            android:text="@string/char_title_placeholder" />
+
+        <Space
+            android:layout_width="0dip"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/characteristic_written_switch"
+            style="@style/CharacteristicNotif"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="1dip"
+            android:layout_weight="0"
+            android:text="@string/char_written_notif" />
+
+        <TextView
+            android:id="@+id/characteristic_modified_switch"
+            style="@style/CharacteristicNotif"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="1dip"
+            android:layout_weight="0"
+            android:text="@string/char_modified_notif" />
+
+    </LinearLayout>
 
     <TextView
         android:id="@+id/characteristic_content"
+        style="@style/Characteristic"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/char_content_placeholder"
-        android:textSize="9sp"/>
+        android:text="@string/char_content_placeholder" />
 </LinearLayout>

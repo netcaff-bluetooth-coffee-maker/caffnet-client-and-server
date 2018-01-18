@@ -3,37 +3,33 @@ package com.quew8.netcaff.server.access;
 import com.quew8.netcaff.lib.access.AccessException;
 import com.quew8.netcaff.lib.access.AccessFailure;
 import com.quew8.netcaff.lib.access.TransferAccess;
-import com.quew8.properties.IntegerProperty;
-import com.quew8.properties.ReadOnlyIntegerProperty;
+import com.quew8.netcaff.server.UnsupportedSystemServiceException;
+import com.quew8.properties.BaseProperty;
+import com.quew8.properties.ReadOnlyListProperty;
+import com.quew8.properties.ValueListProperty;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.ArrayList;
 
 /**
  * @author Quew8
  */
-public class UserList {
+public class UserList extends BaseProperty<UserList> {
     private static final int SALT_LENGTH = 32;
     private final TransferAccess transfer;
     private final SecureRandom random;
-    private final ArrayList<User> users;
-    private final IntegerProperty nUsers;
+    private final ValueListProperty<User> users;
 
-    public UserList() throws NoSuchAlgorithmException {
-        this.transfer = new TransferAccess();
+    public UserList() throws UnsupportedSystemServiceException {
+        this.transfer = getTransfer();
         this.random = new SecureRandom();
-        this.users = new ArrayList<>();
-        this.nUsers = new IntegerProperty(0);
+        this.users = new ValueListProperty<>();
+        dependsOn(users);
     }
 
-    public User getUser(int index) {
-        return users.get(index);
-    }
-
-    public ReadOnlyIntegerProperty getNUsers() {
-        return nUsers;
+    public ReadOnlyListProperty<User> getUsers() {
+        return users;
     }
 
     private int getIndexOfUser(String username) {
@@ -75,8 +71,20 @@ public class UserList {
         addUser(username, salt, hash);
     }
 
-    public void addUser(String username, byte[] salt, byte[] hash) {
+    private void addUser(String username, byte[] salt, byte[] hash) {
         users.add(new User(username, salt, hash));
-        nUsers.set(users.size());
+    }
+
+    private TransferAccess getTransfer() throws UnsupportedSystemServiceException {
+        try {
+            return new TransferAccess();
+        } catch(NoSuchAlgorithmException ex) {
+            throw new UnsupportedSystemServiceException(ex.getMessage());
+        }
+    }
+
+    @Override
+    public UserList getValue() {
+        return this;
     }
 }

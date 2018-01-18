@@ -3,14 +3,16 @@ package com.quew8.netcaff.server.machine;
 import android.os.Handler;
 import android.util.Log;
 
+import com.quew8.properties.BaseProperty;
+
 import java.util.EnumMap;
 
 /**
  * @author Quew8
  */
-class CommsChannel {
+class CommsChannel extends BaseProperty<CommsChannel> {
     private static final String TAG = CommsChannel.class.getSimpleName();
-    private static final int TIMEOUT_MS = 5000;
+    private static final int TIMEOUT_MS = 2000;
     private static final int MAXIMUM_ATTEMPTS = 2;
 
     private SerialChannel serialChannel;
@@ -68,7 +70,12 @@ class CommsChannel {
         serialChannel.close();
     }
 
-    public class ConversationHandle {
+    @Override
+    public CommsChannel getValue() {
+        return this;
+    }
+
+    class ConversationHandle {
         private final String TAG = ConversationHandle.class.getSimpleName();
 
         private final TxCommand command;
@@ -83,6 +90,7 @@ class CommsChannel {
             this.command = command;
             this.callback = callback;
             CommsChannel.this.handler.postDelayed(this::onTimeout, TIMEOUT_MS);
+            CommsChannel.this.notifyChange(CommsChannel.this);
         }
 
         private void terminate() {
@@ -99,7 +107,7 @@ class CommsChannel {
             return command;
         }
 
-        public MessageFailureReason getFailureReason() {
+        MessageFailureReason getFailureReason() {
             return failureReason;
         }
 
@@ -111,6 +119,7 @@ class CommsChannel {
             Log.d(TAG, "STOPPING CONVERSATION: " + command);
             this.finished = true;
             CommsChannel.this.conversations.put(command, null);
+            CommsChannel.this.notifyChange(CommsChannel.this);
         }
 
         private void messageReceived(RxReply reply, int data) {

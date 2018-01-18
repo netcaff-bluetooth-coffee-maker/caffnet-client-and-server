@@ -3,14 +3,13 @@ package com.quew8.netcaff.server;
 import android.os.Handler;
 import android.util.Log;
 
-import com.quew8.netcaff.lib.TimeUtil;
 import com.quew8.netcaff.lib.machine.MachineConstants;
 import com.quew8.netcaff.lib.server.AdData;
 import com.quew8.netcaff.lib.server.CoffeeServer;
 import com.quew8.netcaff.lib.server.Duration;
 import com.quew8.netcaff.lib.server.Level;
 import com.quew8.netcaff.lib.server.Order;
-import com.quew8.netcaff.lib.server.OrderID;
+import com.quew8.netcaff.lib.server.OrderId;
 import com.quew8.netcaff.lib.server.OrderStatus;
 import com.quew8.netcaff.lib.server.ReplyType;
 import com.quew8.netcaff.lib.server.RequestType;
@@ -21,16 +20,16 @@ import com.quew8.netcaff.server.access.AccessList;
 import com.quew8.netcaff.server.access.UserList;
 import com.quew8.netcaff.server.machine.Machine;
 import com.quew8.netcaff.server.machine.RxReply;
-import com.quew8.properties.BooleanProperty;
-import com.quew8.properties.IntegerProperty;
-import com.quew8.properties.ListenerSet;
+import com.quew8.netcaff.server.machine.TxCommand;
+import com.quew8.properties.BaseProperty;
 import com.quew8.properties.Property;
-import com.quew8.properties.PropertyChangeListener;
-import com.quew8.properties.ReadOnlyBooleanProperty;
-import com.quew8.properties.ReadOnlyIntegerProperty;
+import com.quew8.properties.PropertyListProperty;
 import com.quew8.properties.ReadOnlyProperty;
+import com.quew8.properties.ReadOnlyListProperty;
+import com.quew8.properties.ValueListProperty;
+import com.quew8.properties.deferred.ProgressivePromise;
+import com.quew8.properties.deferred.Promise;
 
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.function.Predicate;
@@ -46,10 +45,8 @@ public class ServerCoffeeServer extends CoffeeServer {
     private final Handler h;
     private final Property<byte[]> advertisementData;
     private final AccessList accessList;
-    private final HashMap<OrderID, String> orderOwners;
-    private final ArrayList<MachineHandle> machines;
-    private final IntegerProperty nMachines;
-    private final BooleanProperty machineChange;
+    private final HashMap<OrderId, String> orderOwners;
+    private final PropertyListProperty<AssignedMachine> machines;
 
     private final Handler handler;
     private boolean checkLevelsLoopStarted = false;
@@ -61,9 +58,7 @@ public class ServerCoffeeServer extends CoffeeServer {
         this.orderOwners = new HashMap<>();
         this.h = new Handler();
         this.advertisementData = new Property<>(null);
-        this.machines = new ArrayList<>();
-        this.nMachines = new IntegerProperty(0);
-        this.machineChange = new BooleanProperty(false);
+        this.machines = new PropertyListProperty<>();
         this.handler = new Handler();
         getAdData().addModifiedCallback(this::onAdDataModified);
         constructOrderData();
@@ -109,33 +104,60 @@ public class ServerCoffeeServer extends CoffeeServer {
                         throw new ServerRequestException("There is no available supply", ReplyType.LEVELS_LOW);
                     } else {
                         Duration duration = Duration.fromMS(getTotalQueueTime() + MachineConstants.COFFEE_MAKING_TIME_MS);
-                        OrderID orderId = getAdData().placeOrder();
+                        OrderId orderId = getAdData().placeOrder();
                         orderOwners.put(orderId, username);
                         update();
                         getReply().set(orderId, ReplyType.OK, duration);
                     }
                 } else {
-                    OrderID orderId = getRequest().getOrderId();
+                    OrderId orderId = getRequest().getOrderId();
                     int orderIndex;
-                    MachineHandle machineHandle;
+                    AssignedMachine machine;
                     if((orderIndex = getAdData().getOrderIndexForIdNoThrow(orderId)) < 0) {
                         throw new ServerRequestException("Unrecognized order ID", ReplyType.ERROR);
                     } else if(!isUserOwnerOf(orderId, username)) {
                         throw new ServerRequestException("You don't own this order", ReplyType.AUTH_FAILED);
                     } else {
-                        if(getRequest().getRequestType() == RequestType.ORDER) {
+                        if(getRequest().getRequestType() == RequestType.POUR) {
                             if(getAdData().getOrder(orderIndex).getStatus() != OrderStatus.READ_TO_POUR) {
                                 throw new ServerRequestException("Order not ready to pour", ReplyType.ERROR);
-                            } else if((machineHandle = getMachineProcessingOrder(orderId)).isPouring()) {
+                            } else if(isPouring(machine = getMachineProcessingOrder(orderId))) {
                                 throw new ServerRequestException("Someone is already pouring", ReplyType.ERROR);
                             } else {
-                                machineHandle.requestPour(orderId);
+                                pour(machine, orderId)
+                                        .progressed(() -> getReply().set(orderId, ReplyType.OK))
+                                        .fail(() -> {
+                                            String errorMessage;
+                                            RxReply reply = machine.handler.getPouringFailure();
+                                            if(reply == null) {
+                                                errorMessage = "Communication with machine failed";
+                                            } else {
+                                                switch(reply) {
+                                                    case ERR_NO_MUG: {
+                                                        errorMessage = "There is no mug present";
+                                                        break;
+                                                    }
+                                                    case ERR_NO_COFFEE: {
+                                                        errorMessage = "There is no coffee available";
+                                                        break;
+                                                    }
+                                                    default: {
+                                                        errorMessage = "Unexpected reply (" + reply.toString() + ")";
+                                                    }
+                                                }
+                                            }
+                                            getError().set(errorMessage);
+                                            getReply().set(orderId, ReplyType.ERROR);
+                                        });
                             }
                         } else if(getRequest().getRequestType() == RequestType.CANCEL) {
                             if(getAdData().getOrder(orderIndex).getStatus() == OrderStatus.QUEUED) {
                                 getAdData().cancel(orderId);
                             } else {
-                                getMachineProcessingOrder(orderId).cancel(orderId);
+                                machine = getMachineProcessingOrder(orderId);
+                                AdData.AdDataEdit edit = getAdData().edit();
+                                cancelOrder(edit, machine, orderId);
+                                edit.apply();
                             }
                             getReply().set(orderId, ReplyType.OK, null);
                         } else {
@@ -154,23 +176,24 @@ public class ServerCoffeeServer extends CoffeeServer {
 
     private void update() {
         Log.d(TAG, "UPDATING--------------------");
+        AdData.AdDataEdit edit = getAdData().edit();
         for(int i = 0; i < getAdData().getNActiveOrders(); i++) {
             Order o = getAdData().getOrder(i);
             if(o.getStatus() == OrderStatus.READ_TO_POUR && o.isTimedOut()) {
-                MachineHandle machineHandle = getMachineProcessingOrder(o.getId());
-                machineHandle.cancel(o.getId());
+                AssignedMachine m = getMachineProcessingOrder(o.getId());
+                cancelOrder(edit, m, o.getId());
             }
         }
-        ArrayList<OrderID> assignedOrders = new ArrayList<>();
-        for(MachineHandle mh: machines) {
-            if(mh.hasTimedOut()) {
-                mh.cancelAll();
-                mh.dump();
+        ArrayList<OrderId> assignedOrders = new ArrayList<>();
+        for(AssignedMachine m: machines) {
+            if(m.isCoffeeOld()) {
+                cancelAllOrders(edit, m);
+                dump(m);
             } else {
                 int unusedTaken = 0;
                 int availableTaken = 0;
-                int unused = mh.getUnusedMadeCups();
-                int available = Math.min(mh.getCanMakeN(), MachineConstants.MAX_BATCH_SIZE);
+                int unused = getCountUnusedMadeCups(m);
+                int available = Math.min(getCountMakeable(m), MachineConstants.MAX_BATCH_SIZE);
                 for(int i = 0; i < getAdData().getNActiveOrders() &&
                         (unused + available - unusedTaken - availableTaken) > 0; i++) {
 
@@ -179,12 +202,12 @@ public class ServerCoffeeServer extends CoffeeServer {
                         if(o.getStatus() == OrderStatus.QUEUED) {
                             if(unused - unusedTaken > 0) {
                                 Log.d(TAG, "Assigning order " + o.getId() + " to old cup");
-                                mh.reassignOrders.add(o.getId());
+                                m.reassignOrders.add(o.getId());
                                 unusedTaken++;
                                 assignedOrders.add(o.getId());
                             } else if(available - availableTaken > 0) {
                                 Log.d(TAG, "Assigning order " + o.getId() + " to be made");
-                                mh.orders.add(o.getId());
+                                m.orders.add(o.getId());
                                 availableTaken++;
                                 assignedOrders.add(o.getId());
                             }
@@ -192,35 +215,51 @@ public class ServerCoffeeServer extends CoffeeServer {
                     }
                 }
                 if(unusedTaken + availableTaken > 0) {
-                    mh.makeOrders();
+                    updateMachineOrders(edit, m);
                 }
             }
         }
+        edit.apply();
     }
 
     private int getTotalOrderableCups() {
         int n = 0;
-        for(MachineHandle mh: machines) {
-            if(!mh.hasTimedOut()) {
-                int unused = mh.getUnusedMadeCups();
+        for(AssignedMachine m: machines) {
+            if(!m.isCoffeeOld()) {
+                int unused = getCountUnusedMadeCups(m);
                 if(unused > 0) {
                     n += unused;
                 } else {
-                    n += mh.getCanMakeN();
+                    n += getCountMakeable(m);
                 }
             }
         }
         return n;
     }
 
+    private static class MachineStreamData {
+        private long time;
+        private int minLevel;
+    }
+
     private int getTotalQueueTime() {
+        /*MachineStreamData[] streams = new MachineStreamData[machines.size()];
+        for(int i = 0; i < machines.size(); i++) {
+            AssignedMachine machine = machines.get(i);
+            streams[i] = new MachineStreamData();
+            streams[i].time = 0;
+            streams[i].minLevel = getMinLevel(machine);
+            if(machine.dumping) {
+                streams[i].time +=
+            }
+        }*/
         int time = 0;
         for(int i = 0; i < getAdData().getNActiveOrders(); i++) {
             Order order = getAdData().getOrder(i);
             switch(order.getStatus()) {
                 case QUEUED: time += MachineConstants.COFFEE_MAKING_TIME_MS; break;
                 case BEING_MADE: time += MachineConstants.COFFEE_MAKING_TIME_MS; break;
-                case READ_TO_POUR: time += MachineConstants.AVG_COFFEE_POURING_TIME_MS; break;
+                case READ_TO_POUR: time += MachineConstants.AVG_COFFEE_POURING_WAIT_TIME_MS; break;
                 default: throw new IllegalArgumentException(order.getStatus().toString());
             }
         }
@@ -235,11 +274,11 @@ public class ServerCoffeeServer extends CoffeeServer {
         return accessList;
     }
 
-    String getOwnerOfOrder(OrderID orderId) {
+    String getOwnerOfOrder(OrderId orderId) {
         return orderOwners.getOrDefault(orderId, "Unknown");
     }
 
-    private boolean isUserOwnerOf(OrderID orderId, String username) {
+    private boolean isUserOwnerOf(OrderId orderId, String username) {
         String owner = orderOwners.getOrDefault(orderId, null);
         return owner != null && username.equals(owner);
     }
@@ -248,52 +287,50 @@ public class ServerCoffeeServer extends CoffeeServer {
         return advertisementData;
     }
 
-    ReadOnlyIntegerProperty getNMachines() {
-        return nMachines;
+    private int getIndexOfMachine(Machine m) {
+        for(int i = 0; i < machines.size(); i++) {
+            if(machines.get(i).wrapsMachine(m)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
-    ReadOnlyBooleanProperty getMachineChange() {return machineChange;}
-
-    Machine getMachine(int index) {
-        return machines.get(index).m;
-    }
-
-    AbstractList<OrderID> getMachineOrders(int index) {
-        return machines.get(index).orders;
+    ReadOnlyListProperty<AssignedMachine> getMachines() {
+        return machines;
     }
 
     public void addMachine(Machine m) {
-        MachineHandle mh = new MachineHandle(m);
-        this.machines.add(mh);
-        this.nMachines.set(this.machines.size());
-        mh.read(()->{});
+        this.machines.add(new AssignedMachine(m));
+        update();
     }
 
     public void removeMachine(Machine m) {
-        int index = -1;
-        for(int i = 0; i < this.machines.size(); i++) {
-            if(this.machines.get(i).m == m) {
-                index = i;
-                break;
-            }
-        }
+        int index = getIndexOfMachine(m);
         if(index < 0) {
             throw new IllegalArgumentException("This machine isn't registered with the server");
         }
-        MachineHandle mh = this.machines.remove(index);
-        mh.machineDisconnect();
-        this.nMachines.set(this.machines.size());
+        AssignedMachine am = this.machines.removeIndex(index);
+        disconnect(am);
     }
 
-    private void machineChange() {
-        this.machineChange.set(!this.machineChange.get());
-    }
-
-    public void updateMachineLevels(Runnable r) {
-        CounterRunnable cr = new CounterRunnable(machines.size(), r);
-        for(MachineHandle mh: machines) {
-            mh.read(cr);
+    private Promise<Void> updateMachineLevels(Predicate<AssignedMachine> filter) {
+        Promise.GroupDeferredBuilder builder = Promise.when();
+        for(AssignedMachine m: machines) {
+            if(filter.test(m)) {
+                builder.andWhen(read(m));
+            }
         }
+        return builder.promise()
+                .always(this::updateLevels);
+    }
+
+    public Promise<Void> updateMachineLevels() {
+        return updateMachineLevels((m) -> true);
+    }
+
+    private Promise<Void> updateEmptyMachineLevels() {
+        return updateMachineLevels((m) -> getMinLevel(m) <= 0 && m.getNCups() <= 0 && isIdle(m));
     }
 
     void startCheckLevelsLoop() {
@@ -306,305 +343,203 @@ public class ServerCoffeeServer extends CoffeeServer {
     private void checkLevelsLoop() {
         if(!checkLevelsLoopWaiting) {
             checkLevelsLoopWaiting = true;
-            updateEmptyMachineLevels(() -> handler.postDelayed(() -> {
-                checkLevelsLoopWaiting = false;
-                checkLevelsLoop();
-            }, CHECK_LEVELS_LOOP_WAIT_MS));
-        }
-    }
-
-    private void updateEmptyMachineLevels(Runnable r) {
-        Predicate<MachineHandle> filter = (mh) -> mh.getMinLevel() <= 0
-                && mh.getMadeCups() <= 0
-                && mh.isIdle();
-        int n = (int) machines.stream().filter(filter).count();
-        if(n > 0) {
-            CounterRunnable cr = new CounterRunnable(n, r);
-            machines.stream().filter(filter).forEach((mh) -> mh.read(cr));
-        } else {
-            r.run();
+            updateEmptyMachineLevels().always(
+                    () -> handler.postDelayed(
+                            () -> {
+                                checkLevelsLoopWaiting = false;
+                                checkLevelsLoop();
+                            }, CHECK_LEVELS_LOOP_WAIT_MS
+                    )
+            );
         }
     }
 
     private void updateLevels() {
         int accWater = 0;
         int accGrounds = 0;
-        for(MachineHandle mh: machines) {
-            accWater += mh.getWaterLevel();
-            accGrounds += mh.getGroundsLevel();
+        for(AssignedMachine m: machines) {
+            accWater += m.getWaterLevel();
+            accGrounds += m.getCoffeeLevel();
         }
-        getLevels().set(Level.fromN(accGrounds), Level.fromN(accWater));
-        update();
+        if(getLevels().getWaterLevel() != accWater || getLevels().getGroundsLevel() != accGrounds) {
+            getLevels().set(Level.fromN(accGrounds), Level.fromN(accWater));
+            update();
+        }
     }
 
-    private MachineHandle getMachineProcessingOrder(OrderID orderId) {
-        for(MachineHandle machineHandle: machines) {
-            if(machineHandle.orders.contains(orderId)) {
-                return machineHandle;
+    private AssignedMachine getMachineProcessingOrder(OrderId orderId) {
+        for(AssignedMachine m: machines) {
+            if(m.orders.indexOf(orderId) >= 0) {
+                return m;
             }
         }
         throw new IllegalArgumentException("No machines are processing this order (" + orderId.toString() + ")");
     }
 
-    private void runIn(Runnable r, long delayMs) {
-        h.postDelayed(r, delayMs);
+    private boolean isPouring(AssignedMachine m) {
+        return m.pouringId != null;
     }
 
-    private void updateIn(long delayMillis) {
-        runIn(this::update, delayMillis);
+    private boolean isIdle(AssignedMachine m) {
+        return m.orders.isEmpty();
     }
 
-    private class MachineHandle implements Machine.MakeCallback, Machine.PourCallback, Machine.DumpCallback {
-        private final Machine m;
-        private final ArrayList<OrderID> orders;
-        private final ArrayList<OrderID> reassignOrders;
-        private OrderID pouringId = null;
+    private int getCountMakeable(AssignedMachine m) {
+        if(isIdle(m)) {
+            return getMinLevel(m);
+        } else {
+            return 0;
+        }
+    }
+
+    private int getMinLevel(AssignedMachine m) {
+        return Math.min(m.getWaterLevel(), m.getCoffeeLevel());
+    }
+
+    private int getCountUnusedMadeCups(AssignedMachine m) {
+        return m.getNCups() - m.orders.size();
+    }
+
+    private void disconnect(AssignedMachine m) {
+        getAdData().reset(m.orders);
+        m.orders.clear();
+    }
+
+    private void updateMachineOrders(AdData.AdDataEdit edit, AssignedMachine m) {
+        if(m.machine.getState().get() == Machine.MachineState.IDLE) {
+            make(m, m.orders.size());
+        } else {
+            m.orders.addAll(m.reassignOrders);
+            edit.made(m.reassignOrders);
+            m.reassignOrders.clear();
+            m.handler.postDelayed(this::update, CoffeeServer.READY_COFFEE_TIMEOUT_MS);
+        }
+    }
+
+    private void cancelOrder(AdData.AdDataEdit edit, AssignedMachine m, OrderId orderId) {
+        edit.cancelled(orderId);
+        m.orders.remove(orderId);
+    }
+
+    private void cancelAllOrders(AdData.AdDataEdit edit, AssignedMachine m) {
+        edit.cancelled(m.orders.getValue());
+        m.orders.clear();
+    }
+
+    private Promise<Void> read(AssignedMachine m) {
+        return m.handler.read();
+    }
+
+    private ProgressivePromise<Void> make(AssignedMachine m, int n) {
+        return m.handler.make(n)
+                .progressed(() -> getAdData().setMaking(m.orders))
+                .fail(m.orders::clear)
+                .done(() -> {
+                    m.handler.postDelayed(this::update, CoffeeServer.READY_COFFEE_TIMEOUT_MS);
+                    m.handler.postDelayed(this::update, MachineConstants.MAX_COFFEE_AGE_MS);
+                    getAdData().setMade(m.orders);
+                });
+    }
+
+    private ProgressivePromise<Void> pour(AssignedMachine m, OrderId orderId) {
+        m.pouringId = orderId;
+        return m.handler.pour()
+                .fail(() -> m.pouringId = null)
+                .done(() -> {
+                    getAdData().pour(m.pouringId);
+                    m.orders.remove(m.pouringId);
+                    m.pouringId = null;
+                    update();
+                });
+    }
+
+    private void dump(AssignedMachine m) {
+        if(!m.dumping) {
+            if(!m.orders.isEmpty()) {
+                throw new IllegalStateException("Cannot dump whilst orders are assigned");
+            }
+            m.dumping = true;
+            doDump(m);
+        }
+    }
+
+    private void doDump(AssignedMachine m) {
+        Log.d(TAG, m.getDeviceName() + " Dumping");
+        m.handler.dump()
+                .done(() -> {
+                    m.dumping = false;
+                    update();
+                })
+                .fail(() -> {
+                    Log.d(TAG, "Dump failed (" + m.handler.getDumpingFailure() + ")");
+                    if(m.handler.getDumpingFailure() == RxReply.ERR_NO_MUG) {
+                        m.handler.postDelayed(() -> doDump(m), ServerCoffeeServer.RETRY_DUMPING_MS);
+                    } else {
+                        m.dumping = false;
+                    }
+                });
+    }
+
+    public static class AssignedMachine extends BaseProperty<AssignedMachine> {
+        private final Machine machine;
+        private final MachineHandler handler;
+        private final ValueListProperty<OrderId> orders;
+        private final ArrayList<OrderId> reassignOrders;
+        private OrderId pouringId = null;
         private boolean dumping = false;
-        private ArrayList<Runnable> readDeferred = null;
-        private final ListenerSet.ListenerHandle<PropertyChangeListener<Machine.MachineState>> stateListenerHandle;
-        private final ListenerSet.ListenerHandle<PropertyChangeListener<Integer>> coffeeListenerHandle;
-        private final ListenerSet.ListenerHandle<PropertyChangeListener<Integer>> waterListenerHandle;
-        private final ListenerSet.ListenerHandle<PropertyChangeListener<Integer>> nCupsListenerHandle;
 
-        private MachineHandle(Machine m) {
-            this.m = m;
-            this.orders = new ArrayList<>();
+        private AssignedMachine(Machine machine) {
+            this.machine = machine;
+            this.handler = new MachineHandler(machine);
+            this.orders = new ValueListProperty<>();
             this.reassignOrders = new ArrayList<>();
-            this.stateListenerHandle = m.getState().addListener((n,o) -> machineChange());
-            this.coffeeListenerHandle = m.getCoffeeLevel().addListener((n,o) -> machineChange());
-            this.waterListenerHandle = m.getWaterLevel().addListener((n,o) -> machineChange());
-            this.nCupsListenerHandle = m.getNCups().addListener((n,o) -> machineChange());
+            dependsOn(machine);
+            dependsOn(orders);
         }
 
-        private void machineDisconnect() {
-            m.getState().removeListener(this.stateListenerHandle);
-            m.getCoffeeLevel().removeListener(this.coffeeListenerHandle);
-            m.getWaterLevel().removeListener(this.waterListenerHandle);
-            m.getNCups().removeListener(this.nCupsListenerHandle);
-            getAdData().reset(orders);
-            orders.clear();
+        ReadOnlyListProperty<OrderId> getOrders() {
+            return orders;
         }
 
-        void makeOrders() {
-            if(m.getState().get() == Machine.MachineState.IDLE) {
-                m.make(this, orders.size());
-            } else {
-                orders.addAll(reassignOrders);
-                getAdData().setMade(reassignOrders);
-                reassignOrders.clear();
-                updateIn(CoffeeServer.READY_COFFEE_TIMEOUT_MS);
-            }
-            machineChange();
+        Machine.MachineState getState() {
+            return machine.getState().get();
         }
 
-        void requestPour(OrderID orderId) {
-            if(pouringId != null) {
-                throw new IllegalStateException("Machine is already pouring");
-            }
-            pouringId = orderId;
-            m.pour(this);
-            machineChange();
-        }
-
-        void cancel(OrderID orderID) {
-            getAdData().cancel(orderID);
-            orders.remove(orderID);
-            machineChange();
-        }
-
-        void cancelAll() {
-            getAdData().cancel(orders);
-            orders.clear();
-            machineChange();
-        }
-
-        void dump() {
-            if(!dumping) {
-                dumping = true;
-                doDump();
-            }
-        }
-
-        private void doDump() {
-            m.dump(this);
-            machineChange();
-        }
-
-        boolean isPouring() {
-            return pouringId != null;
-        }
-
-        boolean hasTimedOut() {
-            return m.isCoffeeOld();
-        }
-
-        boolean isIdle() {
-            return orders.isEmpty();
-        }
-
-        int getCanMakeN() {
-            if(m.getState().get() != Machine.MachineState.IDLE) {
-                return 0;
-            } else {
-                return getMinLevel();
-            }
-        }
-
-        int getMinLevel() {
-            return Math.min(getWaterLevel(), getGroundsLevel());
-        }
-
-        int getUnusedMadeCups() {
-            return getMadeCups() - orders.size();
+        int getNCups() {
+            return machine.getNCups().get();
         }
 
         int getWaterLevel() {
-            return m.getWaterLevel().get();
+            return machine.getWaterLevel().get();
         }
 
-        int getGroundsLevel() {
-            return m.getCoffeeLevel().get();
+        int getCoffeeLevel() {
+            return machine.getCoffeeLevel().get();
         }
 
-        int getMadeCups() {
-            return m.getNCups().get();
+        long getTimeLastMade() {
+            return machine.getTimeLastMade().get();
         }
 
-        void read(Runnable r) {
-            if(readDeferred == null) {
-                readDeferred = new ArrayList<>();
-                m.read((success, available, water, coffee) -> {
-                    machineChange();
-                    updateLevels();
-                    for(Runnable runnable: readDeferred) {
-                        runnable.run();
-                    }
-                    readDeferred = null;
-                });
-                machineChange();
-            }
-            readDeferred.add(r);
+        boolean isCoffeeOld() {
+            return machine.isCoffeeOld();
+        }
+
+        boolean isTalkingAbout(TxCommand command) {
+            return machine.isTalkingAbout(command);
+        }
+
+        String getDeviceName() {
+            return machine.getDeviceName();
         }
 
         @Override
-        public void making(boolean success, RxReply reply) {
-            if(success) {
-                Log.d(TAG, "Making: " + machines.get(0).m.toString());
-                getAdData().setMaking(orders);
-            } else {
-                Log.d(TAG, "Failed to request coffee");
-                orders.clear();
-            }
+        public AssignedMachine getValue() {
+            return this;
         }
 
-        @Override
-        public void made(RxReply reply) {
-            Log.d(TAG, "Made: " + machines.get(0).m.toString());
-            updateIn(CoffeeServer.READY_COFFEE_TIMEOUT_MS);
-            updateIn(MachineConstants.MAX_COFFEE_AGE_MS);
-            machineChange();
-            getAdData().setMade(orders);
-        }
-
-        @Override
-        public void pouring(boolean success, RxReply reply) {
-            if(success) {
-                getReply().set(pouringId, ReplyType.OK);
-                Log.d(TAG, "Pouring: " + machines.get(0).m.toString());
-            } else {
-                machineChange();
-                String errorMessage;
-                if(reply == null) {
-                    errorMessage = "Communication with machine failed";
-                } else {
-                    switch(reply) {
-                        case ERR_NO_MUG: {
-                            errorMessage = "There is no mug present";
-                            break;
-                        }
-                        case ERR_NO_COFFEE: {
-                            errorMessage = "There is no coffee available";
-                            break;
-                        }
-                        default: {
-                            errorMessage = "Unexpected reply (" + reply.toString() + ")";
-                        }
-                    }
-                }
-                getError().set(errorMessage);
-                getReply().set(pouringId, ReplyType.ERROR);
-                pouringId = null;
-            }
-        }
-
-        @Override
-        public void dumped(RxReply reply) {
-            Log.d(TAG, "Dumped");
-            machineChange();
-            dumping = false;
-            update();
-        }
-
-        @Override
-        public void dumping(boolean success, RxReply reply) {
-            if(success) {
-                Log.d(TAG, "Dumping: " + machines.get(0).m.toString());
-            } else {
-                machineChange();
-                if(reply == RxReply.ERR_NO_MUG) {
-                    Log.d(TAG, "Couldn't dump. Retrying in " + RETRY_DUMPING_MS + "ms");
-                    runIn(this::doDump, RETRY_DUMPING_MS);
-                } else {
-                    String errorMessage;
-                    if(reply == null) {
-                        errorMessage = "Communication with machine failed";
-                    } else {
-                        switch(reply) {
-                            case ERR_NO_COFFEE: {
-                                errorMessage = "There is no coffee to dump";
-                                break;
-                            }
-                            default: {
-                                errorMessage = "Unexpected reply (" + reply.toString() + ")";
-                            }
-                        }
-                    }
-                    dumping = false;
-                    Log.d(TAG, "Dumping error: " + errorMessage);
-                }
-            }
-        }
-
-        @Override
-        public void poured(RxReply reply) {
-            Log.d(TAG, "Poured: " + machines.get(0).m.toString() + "(" + orders.size() + ")");
-            machineChange();
-            getAdData().pour(pouringId);
-            orders.remove(pouringId);
-            pouringId = null;
-            update();
-        }
-    }
-
-    private class CounterRunnable implements Runnable {
-        private int i;
-        private final int n;
-        private final Runnable r;
-
-        CounterRunnable(int n, Runnable r) {
-            this.i = 0;
-            this.n = n;
-            this.r = r;
-            if(n == 0) {
-                r.run();
-            }
-        }
-
-        @Override
-        public void run() {
-            if(++i >= n) {
-                r.run();
-            }
+        private boolean wrapsMachine(Machine machine) {
+            return getDeviceName().equals(machine.getDeviceName());
         }
     }
 }

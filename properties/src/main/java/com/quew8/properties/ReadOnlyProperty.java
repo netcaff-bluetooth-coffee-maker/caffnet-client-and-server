@@ -5,5 +5,5 @@ package com.quew8.properties;
  */
 
 public interface ReadOnlyProperty<T> extends Listenable<T> {
-    public T get();
+    T get();
 }

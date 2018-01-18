@@ -33,11 +33,11 @@ public abstract class CharacteristicStruct extends AlignedStruct {
     @Override
     public void readFromBuffer(ByteBuffer in) throws StructureFormatException {
         super.readFromBuffer(in);
-        writeCallbacks.notify((callback) -> callback.onWritten());
+        writeCallbacks.notify(WrittenCallback::onWritten);
     }
 
     protected void set() {
-        modifiedCallbacks.notify((callback) -> callback.onModified());
+        modifiedCallbacks.notify(ModifiedCallback::onModified);
     }
 
     public interface WrittenCallback {

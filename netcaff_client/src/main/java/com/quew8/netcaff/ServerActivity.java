@@ -11,7 +11,7 @@ import android.widget.ProgressBar;
 import com.quew8.netcaff.ble.CoffeeScanner;
 import static com.quew8.netcaff.lib.ble.CoffeeServerProfile.*;
 
-import com.quew8.netcaff.lib.server.OrderID;
+import com.quew8.netcaff.lib.server.OrderId;
 import com.quew8.netcaff.lib.server.ReplyType;
 import com.quew8.properties.ReadOnlyBooleanProperty;
 import com.quew8.properties.deferred.Deferred;
@@ -20,7 +20,7 @@ import com.quew8.properties.deferred.Promise;
 /**
  * @author Quew8
  */
-public class ServerActivity extends AbstractServerActivity {
+public class ServerActivity extends ServerCommunicationActivity {
     private static final String TAG = ServerActivity.class.getSimpleName();
 
     private Button orderBtn;
@@ -81,7 +81,7 @@ public class ServerActivity extends AbstractServerActivity {
         return d.promise();
     }
 
-    private void onIsWorkingChange(boolean working, boolean old) {
+    private void onIsWorkingChange(boolean working) {
         commsProgress.setVisibility(working ? View.VISIBLE : View.GONE);
         orderBtn.setEnabled(!working);
         rescanBtn.setEnabled(!working);
@@ -125,7 +125,7 @@ public class ServerActivity extends AbstractServerActivity {
         }
 
         @Override
-        public Promise<Void> pour(OrderID orderId) {
+        public Promise<Void> pour(OrderId orderId) {
             Deferred<Void> d = new Deferred<>();
             checkHasAccessCode()
                     .done(() -> {
@@ -139,7 +139,7 @@ public class ServerActivity extends AbstractServerActivity {
         }
 
         @Override
-        public Promise<Void> cancel(OrderID orderId) {
+        public Promise<Void> cancel(OrderId orderId) {
             Deferred<Void> d = new Deferred<>();
             checkHasAccessCode()
                     .done(() -> {
