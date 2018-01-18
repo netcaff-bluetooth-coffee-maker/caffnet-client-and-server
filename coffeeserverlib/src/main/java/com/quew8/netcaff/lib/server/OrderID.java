@@ -4,14 +4,14 @@ package com.quew8.netcaff.lib.server;
  * @author Quew8
  */
 
-public class OrderID extends Struct {
+public class OrderId extends Struct {
     private int orderId;
 
-    OrderID(int orderId) {
+    OrderId(int orderId) {
         this.orderId = orderId;
     }
 
-    public OrderID() {
+    public OrderId() {
         this(0);
     }
 
@@ -42,9 +42,9 @@ public class OrderID extends Struct {
         if(this == o) return true;
         if(o == null || getClass() != o.getClass()) return false;
 
-        OrderID orderID = (OrderID) o;
+        OrderId orderId = (OrderId) o;
 
-        return orderId == orderID.orderId;
+        return this.orderId == orderId.orderId;
     }
 
     public String getPrettyString() {
@@ -58,7 +58,7 @@ public class OrderID extends Struct {
 
     @Override
     public String toString() {
-        return "OrderID{" +
+        return "OrderId{" +
                 "orderId=" + orderId +
                 '}';
     }

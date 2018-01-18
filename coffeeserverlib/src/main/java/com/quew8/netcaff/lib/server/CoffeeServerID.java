@@ -4,24 +4,22 @@ package com.quew8.netcaff.lib.server;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import com.quew8.properties.IntegerProperty;
-
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
  * @author Quew8
  */
-public class CoffeeServerID extends CharacteristicStruct implements Parcelable {
+public class CoffeeServerId extends CharacteristicStruct implements Parcelable {
     public static final int SIZE_BYTES = 4;
 
     private int id;
 
-    CoffeeServerID(int id) {
+    CoffeeServerId(int id) {
         this.id = id;
     }
 
-    public CoffeeServerID() {
+    public CoffeeServerId() {
         this(0);
     }
 
@@ -63,7 +61,7 @@ public class CoffeeServerID extends CharacteristicStruct implements Parcelable {
     public boolean equals(Object o) {
         if(this == o) return true;
         if(o == null || getClass() != o.getClass()) return false;
-        CoffeeServerID that = (CoffeeServerID) o;
+        CoffeeServerId that = (CoffeeServerId) o;
         return id == that.id;
     }
 
@@ -80,13 +78,13 @@ public class CoffeeServerID extends CharacteristicStruct implements Parcelable {
         out.writeInt(id);
     }
 
-    public static final Parcelable.Creator<CoffeeServerID> CREATOR = new Parcelable.Creator<CoffeeServerID>() {
-        public CoffeeServerID createFromParcel(Parcel in) {
-            return new CoffeeServerID(in.readInt());
+    public static final Parcelable.Creator<CoffeeServerId> CREATOR = new Parcelable.Creator<CoffeeServerId>() {
+        public CoffeeServerId createFromParcel(Parcel in) {
+            return new CoffeeServerId(in.readInt());
         }
 
-        public CoffeeServerID[] newArray(int size) {
-            return new CoffeeServerID[size];
+        public CoffeeServerId[] newArray(int size) {
+            return new CoffeeServerId[size];
         }
     };
 
@@ -95,14 +93,14 @@ public class CoffeeServerID extends CharacteristicStruct implements Parcelable {
         return Integer.toString(id);
     }
 
-    public static String toPrefString(CoffeeServerID id) {
+    public static String toPrefString(CoffeeServerId id) {
         return Integer.toString(id.id);
     }
 
-    public static CoffeeServerID fromPrefString(String s) {
+    public static CoffeeServerId fromPrefString(String s) {
         try {
             int i = Integer.parseInt(s);
-            CoffeeServerID id = new CoffeeServerID(i);
+            CoffeeServerId id = new CoffeeServerId(i);
             String err = id.check();
             return err == null ? id : null;
         } catch(NumberFormatException ex) {
